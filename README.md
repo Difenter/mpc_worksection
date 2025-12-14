@@ -52,6 +52,7 @@ To run in stdio mode (for tools like the MCP Inspector or Claude’s CLI), start
 - `get_comments` – lists comments on a task (optionally include attached files).
 - `get_costs` – returns cost entries filtered by project/task/date/timer flags.
 - `get_costs_total` – aggregates cost totals (optionally per-project breakdowns with `extra=projects`).
+- `get_timers` – lists currently running timers (ID, start time, owner, elapsed value).
 - `post_task` – creates tasks or subtasks.
 - `post_comment` – posts comments (and optional checklists) to tasks.
 

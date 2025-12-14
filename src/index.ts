@@ -177,6 +177,11 @@ const getCostsTotalOutputSchema = z.object({
   totals: recordAny
 });
 
+const getTimersOutputSchema = z.object({
+  count: z.number(),
+  timers: z.array(recordAny)
+});
+
 async function completeProjectIds(client: WorksectionClient, value: string): Promise<string[]> {
   try {
     const response = await client.call<{ data?: Array<{ id?: string | number }> }>('get_projects');
@@ -457,6 +462,24 @@ function registerTools(server: McpServer, client: WorksectionClient) {
 
         const response = await client.call<{ data?: Record<string, unknown> }>('get_costs_total', { params });
         return respond({ totals: response.data ?? {} });
+      } catch (error) {
+        return respondError(error);
+      }
+    }) as any
+  );
+
+  server.registerTool(
+    'get_timers',
+    {
+      title: 'List running timers',
+      description: 'Calls get_timers to show active timers with IDs, start times, and owners.',
+      outputSchema: getTimersOutputSchema.shape
+    } as any,
+    (async () => {
+      try {
+        const response = await client.call<{ data?: unknown[] }>('get_timers');
+        const timers = Array.isArray(response.data) ? response.data : [];
+        return respond({ count: timers.length, timers });
       } catch (error) {
         return respondError(error);
       }
