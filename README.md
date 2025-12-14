@@ -44,43 +44,39 @@ To run in stdio mode (for tools like the MCP Inspector or Claude’s CLI), start
 
 ## Available tools
 
-- `get_users` – lists all visible users (`get_users` action).
-- `get_projects` – lists projects with optional state filters and `extra` details.
-- `get_project` – fetches a single project with optional extras.
-- `get_tasks` – lists every task in a project, optionally limited to active tasks and enriched with extras.
-- `get_task` – fetches a single task with optional extras/relations/subtasks.
-- `get_comments` – lists comments on a task (optionally include attached files).
-- `get_costs` – returns cost entries filtered by project/task/date/timer flags.
-- `get_costs_total` – aggregates cost totals (optionally per-project breakdowns with `extra=projects`).
-- `get_timers` – lists currently running timers (ID, start time, owner, elapsed value).
-- `post_task` – creates tasks or subtasks.
-- `post_comment` – posts comments (and optional checklists) to tasks.
+- `get_users` – lists all visible users (`get_users` action). No inputs.
+- `get_projects` – lists projects; optional `filter` (`active`, `pending`, `archive`) and `include` (`text`, `options`, `users`) map to Worksection’s `extra`.
+- `get_project` – fetches a single project; optional `include` supports the same extras (`text`, `options`, `users`).
+- `get_tasks` – lists tasks inside `projectId`; optional `activeOnly` and `include` (`text`, `files`, `comments`, `relations`, `subtasks`, `subscribers`).
+- `get_task` – fetches one task; optional `include` (same as `get_tasks`) and `activeSubtasksOnly`.
+- `get_comments` – lists comments on `taskId`; optional `include: ["files"]` to include attachment metadata.
+- `get_costs` – returns cost rows; optional `projectId`, `taskId`, `startDate`, `endDate`, `isTimer`, `filter`.
+- `get_costs_total` – aggregates totals; optional `projectId`, `taskId`, `startDate`, `endDate`, `isTimer`, `filter`, `include: ["projects"]`.
+- `get_timers` – lists currently running timers. No inputs.
+- `post_task` – creates tasks/subtasks; optional fields include `description`, `parentTaskId`, `assigneeEmail`, `priority`, `startDate`, `dueDate`, `checklist`, `subscribeEmails`, `visibilityEmails`, `mentionEmails`, `estimateHours`, `budget`, `tags`.
+- `post_comment` – posts comments; optional `text`, `checklist`, `visibilityEmails`, `mentionEmails` (one of `text` or `checklist` required).
 
-### Adding optional extras (Worksection `extra` query param)
+### Using Worksection extras via `include`
 
-Worksection’s API allows extra data to be pulled in by supplying the `extra` query parameter (comma-separated). The MCP tools expose the same capability via each tool’s `include` array input—it gets translated into `extra=<value1,value2,...>` when calling Worksection. For example, `get_projects` with `include: ["text", "users"]` results in:
-
-```
-?action=get_projects&id_project=PROJECT_ID&extra=text,users
-```
+Wherever a tool accepts `include`, it gets translated into Worksection’s `extra` query parameter (comma-separated). Example: calling `get_project` with `include: ["text", "users"]` issues `?action=get_project&id_project=123&extra=text,users`, so you receive the full description plus team members in one response.
 
 Supported extras:
 
-- `get_projects` and `get_project` → `text`, `options`, `users` (matches Worksection’s project extras)
-- `get_tasks` and `get_task` → `text`, `files`, `comments`, `relations`, `subtasks`, `subscribers` (all helpers supported by `get_tasks`/`get_task`)
-- `get_comments` → `files` (include comment attachment details)
-- `get_costs_total` → `projects` (add per-project totals and monthly data when not scoped to a single task)
+- `get_projects` / `get_project`: `text`, `options`, `users`
+- `get_tasks` / `get_task`: `text`, `files`, `comments`, `relations`, `subtasks`, `subscribers`
+- `get_comments`: `files`
+- `get_costs_total`: `projects`
 
-Any combination can be specified, e.g. `extra=text,options,users` if you need the HTML description, restriction options, and project team in a single `get_projects` or `get_project` call.
+### Cost filtering reference (`get_costs`, `get_costs_total`)
 
-### Cost filtering reference (`get_costs`)
+Both cost tools accept Worksection’s filter syntax:
 
-The `get_costs` tool mirrors Worksection’s `get_costs` action. Pass any mix of:
+- Scope by ID: `project=2456`, `id in (123, 456)`
+- String filters: `comment = 'Monthly report'`, `comment has 'report'`
+- Date filters: `dateadd > '01.05.2024'`
+- Combine with parentheses and `and`/`or`: `(comment has 'report' or comment has 'review') and (dateadd<'25.05.2024' and dateadd>'31.05.2024')`
 
-- `projectId` / `taskId` – scopes the results.
-- `startDate` / `endDate` – any format accepted by the other tools (ISO `YYYY-MM-DD` or already formatted `DD.MM.YYYY`).
-- `isTimer` – `true` for timer-based entries, `false` for manual entries.
-- `filter` – raw Worksection filter string, e.g. `(comment has 'report') and dateadd>'01.05.2024'`.
+Dates in `startDate`/`endDate` can be ISO (`YYYY-MM-DD`) or already formatted (`DD.MM.YYYY`); the server converts ISO to Worksection’s preferred format.
 
 ## Exposed resources
 
