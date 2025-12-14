@@ -10,10 +10,12 @@ import { WorksectionApiError, WorksectionClient, type RequestParams } from './wo
 const projectExtras = ['text', 'options', 'users'] as const;
 const taskExtras = ['text', 'files', 'comments', 'relations', 'subtasks', 'subscribers'] as const;
 const commentExtras = ['files'] as const;
+const costTotalsExtras = ['projects'] as const;
 
 type ProjectExtra = (typeof projectExtras)[number];
 type TaskExtra = (typeof taskExtras)[number];
 type CommentExtra = (typeof commentExtras)[number];
+type CostTotalsExtra = (typeof costTotalsExtras)[number];
 
 const pkgVersion = typeof pkg.version === 'string' ? pkg.version : '0.0.0';
 
@@ -159,6 +161,20 @@ type GetCostsArgs = z.infer<typeof getCostsArgsSchema>;
 const getCostsOutputSchema = z.object({
   count: z.number(),
   costs: z.array(recordAny)
+});
+
+const getCostsTotalArgsSchema = z.object({
+  projectId: z.string().optional(),
+  taskId: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  isTimer: z.boolean().optional(),
+  filter: z.string().optional(),
+  include: z.array(z.enum(costTotalsExtras)).optional()
+});
+type GetCostsTotalArgs = z.infer<typeof getCostsTotalArgsSchema>;
+const getCostsTotalOutputSchema = z.object({
+  totals: recordAny
 });
 
 async function completeProjectIds(client: WorksectionClient, value: string): Promise<string[]> {
@@ -414,6 +430,33 @@ function registerTools(server: McpServer, client: WorksectionClient) {
         const response = await client.call<{ data?: unknown[] }>('get_costs', { params });
         const costs = Array.isArray(response.data) ? response.data : [];
         return respond({ count: costs.length, costs });
+      } catch (error) {
+        return respondError(error);
+      }
+    }) as any
+  );
+
+  server.registerTool(
+    'get_costs_total',
+    {
+      title: 'Get cost totals',
+      description: 'Calls get_costs_total to aggregate time/money per project or task with optional per-project breakdowns.',
+      inputSchema: getCostsTotalArgsSchema.shape,
+      outputSchema: getCostsTotalOutputSchema.shape
+    } as any,
+    (async (args: GetCostsTotalArgs) => {
+      try {
+        const params: RequestParams = {};
+        if (args.projectId) params.id_project = args.projectId;
+        if (args.taskId) params.id_task = args.taskId;
+        if (args.startDate) params.datestart = formatWsDate(args.startDate);
+        if (args.endDate) params.dateend = formatWsDate(args.endDate);
+        if (typeof args.isTimer === 'boolean') params.is_timer = args.isTimer ? 1 : 0;
+        if (args.filter) params.filter = args.filter;
+        if (args.include?.length) params.extra = args.include.join(', ');
+
+        const response = await client.call<{ data?: Record<string, unknown> }>('get_costs_total', { params });
+        return respond({ totals: response.data ?? {} });
       } catch (error) {
         return respondError(error);
       }

@@ -51,6 +51,7 @@ To run in stdio mode (for tools like the MCP Inspector or Claude’s CLI), start
 - `get_task` – fetches a single task with optional extras/relations/subtasks.
 - `get_comments` – lists comments on a task (optionally include attached files).
 - `get_costs` – returns cost entries filtered by project/task/date/timer flags.
+- `get_costs_total` – aggregates cost totals (optionally per-project breakdowns with `extra=projects`).
 - `post_task` – creates tasks or subtasks.
 - `post_comment` – posts comments (and optional checklists) to tasks.
 
@@ -67,6 +68,7 @@ Supported extras:
 - `get_projects` and `get_project` → `text`, `options`, `users` (matches Worksection’s project extras)
 - `get_tasks` and `get_task` → `text`, `files`, `comments`, `relations`, `subtasks`, `subscribers` (all helpers supported by `get_tasks`/`get_task`)
 - `get_comments` → `files` (include comment attachment details)
+- `get_costs_total` → `projects` (add per-project totals and monthly data when not scoped to a single task)
 
 Any combination can be specified, e.g. `extra=text,options,users` if you need the HTML description, restriction options, and project team in a single `get_projects` or `get_project` call.
 
