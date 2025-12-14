@@ -142,7 +142,7 @@ async function completeProjectIds(client: WorksectionClient, value: string): Pro
 
 function registerTools(server: McpServer, client: WorksectionClient) {
   server.registerTool(
-    'listUsers',
+    'get_users',
   {
     title: 'List Worksection users',
     description: 'Fetches account users through the get_users API action.',
@@ -160,7 +160,7 @@ function registerTools(server: McpServer, client: WorksectionClient) {
   );
 
   server.registerTool(
-    'listProjects',
+    'get_projects',
     {
       title: 'List Worksection projects',
       description: 'Reads project metadata with optional filters and extra fields.',
@@ -189,7 +189,7 @@ function registerTools(server: McpServer, client: WorksectionClient) {
   );
 
   server.registerTool(
-    'listProjectTasks',
+    'get_tasks',
     {
       title: 'List tasks for a project',
       description: 'Calls get_tasks for a single project with optional extras.',
@@ -215,7 +215,7 @@ function registerTools(server: McpServer, client: WorksectionClient) {
   );
 
   server.registerTool(
-    'getTask',
+    'get_task',
     {
       title: 'Get task details',
       description: 'Retrieves a single task using the get_task API action.',
@@ -238,7 +238,7 @@ function registerTools(server: McpServer, client: WorksectionClient) {
   );
 
   server.registerTool(
-    'createTask',
+    'post_task',
     {
       title: 'Create a Worksection task',
       description: 'Calls post_task to create a task or subtask in Worksection.',
@@ -278,7 +278,7 @@ function registerTools(server: McpServer, client: WorksectionClient) {
   );
 
   server.registerTool(
-    'addComment',
+    'post_comment',
     {
       title: 'Create a task comment',
       description: 'Calls post_comment to add a comment or checklist to a task.',
@@ -343,7 +343,7 @@ function registerResources(server: McpServer, client: WorksectionClient) {
     'worksection://users',
     {
       title: 'Worksection users',
-      description: 'Returns the same payload as the listUsers tool for quick reference.',
+      description: 'Returns the same payload as the get_users tool for quick reference.',
       mimeType: 'application/json'
     },
     async uri => {
