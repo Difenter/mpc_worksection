@@ -9,9 +9,11 @@ import { WorksectionApiError, WorksectionClient, type RequestParams } from './wo
 
 const projectExtras = ['text', 'options', 'users'] as const;
 const taskExtras = ['text', 'files', 'comments', 'relations', 'subtasks', 'subscribers'] as const;
+const commentExtras = ['files'] as const;
 
 type ProjectExtra = (typeof projectExtras)[number];
 type TaskExtra = (typeof taskExtras)[number];
+type CommentExtra = (typeof commentExtras)[number];
 
 const pkgVersion = typeof pkg.version === 'string' ? pkg.version : '0.0.0';
 
@@ -132,6 +134,17 @@ const addCommentArgsSchema = z.object({
 type AddCommentArgs = z.infer<typeof addCommentArgsSchema>;
 const addCommentOutputSchema = z.object({
   comment: recordAny
+});
+
+const getCommentsArgsSchema = z.object({
+  taskId: z.string().min(1, 'Task ID is required'),
+  include: z.array(z.enum(commentExtras)).optional()
+});
+type GetCommentsArgs = z.infer<typeof getCommentsArgsSchema>;
+const getCommentsOutputSchema = z.object({
+  taskId: z.string(),
+  count: z.number(),
+  comments: z.array(recordAny)
 });
 
 async function completeProjectIds(client: WorksectionClient, value: string): Promise<string[]> {
@@ -337,6 +350,29 @@ function registerTools(server: McpServer, client: WorksectionClient) {
         });
 
         return respond({ comment: response.data ?? {} });
+      } catch (error) {
+        return respondError(error);
+      }
+    }) as any
+  );
+
+  server.registerTool(
+    'get_comments',
+    {
+      title: 'List task comments',
+      description: 'Calls get_comments to retrieve comments for a task with optional file details.',
+      inputSchema: getCommentsArgsSchema.shape,
+      outputSchema: getCommentsOutputSchema.shape
+    } as any,
+    (async (args: GetCommentsArgs) => {
+      const { taskId, include } = args;
+      try {
+        const params: RequestParams = { id_task: taskId };
+        if (include?.length) params.extra = include.join(', ');
+
+        const response = await client.call<{ data?: unknown[] }>('get_comments', { params });
+        const comments = Array.isArray(response.data) ? response.data : [];
+        return respond({ taskId, count: comments.length, comments });
       } catch (error) {
         return respondError(error);
       }
