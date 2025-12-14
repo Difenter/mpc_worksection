@@ -68,6 +68,16 @@ const listProjectsOutputSchema = z.object({
   requestedExtras: z.array(z.string())
 });
 
+const getProjectArgsSchema = z.object({
+  projectId: z.string().min(1, 'Project ID is required'),
+  include: z.array(z.enum(projectExtras)).optional()
+});
+type GetProjectArgs = z.infer<typeof getProjectArgsSchema>;
+
+const getProjectOutputSchema = z.object({
+  project: recordAny
+});
+
 const listProjectTasksArgsSchema = z.object({
   projectId: z.string().min(1, 'Project ID is required'),
   activeOnly: z.boolean().optional(),
@@ -182,6 +192,28 @@ function registerTools(server: McpServer, client: WorksectionClient) {
           appliedFilter: filter ?? null,
           requestedExtras: include ?? []
         });
+      } catch (error) {
+        return respondError(error);
+      }
+    }) as any
+  );
+
+  server.registerTool(
+    'get_project',
+    {
+      title: 'Get Worksection project',
+      description: 'Calls get_project to fetch a single project with optional extra fields.',
+      inputSchema: getProjectArgsSchema.shape,
+      outputSchema: getProjectOutputSchema.shape
+    } as any,
+    (async (args: GetProjectArgs) => {
+      const { projectId, include } = args;
+      try {
+        const params: RequestParams = { id_project: projectId };
+        if (include?.length) params.extra = include.join(', ');
+
+        const response = await client.call<{ data?: Record<string, unknown> }>('get_project', { params });
+        return respond({ project: response.data ?? {} });
       } catch (error) {
         return respondError(error);
       }
