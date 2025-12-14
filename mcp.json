@@ -1,0 +1,10 @@
+{
+  "name": "worksection",
+  "description": "Worksection MCP server",
+  "command": "node",
+  "args": ["dist/index.js"],
+  "env": {
+    "WORKSECTION_ACCOUNT_URL": "https://me2206.worksection.com",
+    "WORKSECTION_ADMIN_API_KEY": "d6f7b9b13b9653b6e761ce2c360d1f20"
+  }
+}
