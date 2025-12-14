@@ -50,6 +50,7 @@ To run in stdio mode (for tools like the MCP Inspector or Claude’s CLI), start
 - `get_tasks` – lists every task in a project, optionally limited to active tasks and enriched with extras.
 - `get_task` – fetches a single task with optional extras/relations/subtasks.
 - `get_comments` – lists comments on a task (optionally include attached files).
+- `get_costs` – returns cost entries filtered by project/task/date/timer flags.
 - `post_task` – creates tasks or subtasks.
 - `post_comment` – posts comments (and optional checklists) to tasks.
 
@@ -68,6 +69,15 @@ Supported extras:
 - `get_comments` → `files` (include comment attachment details)
 
 Any combination can be specified, e.g. `extra=text,options,users` if you need the HTML description, restriction options, and project team in a single `get_projects` or `get_project` call.
+
+### Cost filtering reference (`get_costs`)
+
+The `get_costs` tool mirrors Worksection’s `get_costs` action. Pass any mix of:
+
+- `projectId` / `taskId` – scopes the results.
+- `startDate` / `endDate` – any format accepted by the other tools (ISO `YYYY-MM-DD` or already formatted `DD.MM.YYYY`).
+- `isTimer` – `true` for timer-based entries, `false` for manual entries.
+- `filter` – raw Worksection filter string, e.g. `(comment has 'report') and dateadd>'01.05.2024'`.
 
 ## Exposed resources
 

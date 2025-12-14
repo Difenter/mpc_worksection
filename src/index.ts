@@ -147,6 +147,20 @@ const getCommentsOutputSchema = z.object({
   comments: z.array(recordAny)
 });
 
+const getCostsArgsSchema = z.object({
+  projectId: z.string().optional(),
+  taskId: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  isTimer: z.boolean().optional(),
+  filter: z.string().optional()
+});
+type GetCostsArgs = z.infer<typeof getCostsArgsSchema>;
+const getCostsOutputSchema = z.object({
+  count: z.number(),
+  costs: z.array(recordAny)
+});
+
 async function completeProjectIds(client: WorksectionClient, value: string): Promise<string[]> {
   try {
     const response = await client.call<{ data?: Array<{ id?: string | number }> }>('get_projects');
@@ -373,6 +387,33 @@ function registerTools(server: McpServer, client: WorksectionClient) {
         const response = await client.call<{ data?: unknown[] }>('get_comments', { params });
         const comments = Array.isArray(response.data) ? response.data : [];
         return respond({ taskId, count: comments.length, comments });
+      } catch (error) {
+        return respondError(error);
+      }
+    }) as any
+  );
+
+  server.registerTool(
+    'get_costs',
+    {
+      title: 'List task/project costs',
+      description: 'Calls get_costs to fetch logged time/money entries with optional scope filters.',
+      inputSchema: getCostsArgsSchema.shape,
+      outputSchema: getCostsOutputSchema.shape
+    } as any,
+    (async (args: GetCostsArgs) => {
+      try {
+        const params: RequestParams = {};
+        if (args.projectId) params.id_project = args.projectId;
+        if (args.taskId) params.id_task = args.taskId;
+        if (args.startDate) params.datestart = formatWsDate(args.startDate);
+        if (args.endDate) params.dateend = formatWsDate(args.endDate);
+        if (typeof args.isTimer === 'boolean') params.is_timer = args.isTimer ? 1 : 0;
+        if (args.filter) params.filter = args.filter;
+
+        const response = await client.call<{ data?: unknown[] }>('get_costs', { params });
+        const costs = Array.isArray(response.data) ? response.data : [];
+        return respond({ count: costs.length, costs });
       } catch (error) {
         return respondError(error);
       }
