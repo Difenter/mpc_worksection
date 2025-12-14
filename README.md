@@ -44,17 +44,35 @@ To run in stdio mode (for tools like the MCP Inspector or Claude’s CLI), start
 
 ## Available tools
 
-- `listUsers` – lists all visible users.
-- `listProjects` – lists projects with optional state filters and `extra` details.
-- `listProjectTasks` – lists every task in a project, optionally limited to active tasks and enriched with extras.
-- `getTask` – fetches a single task with optional extras/relations/subtasks.
-- `createTask` – creates tasks or subtasks (`post_task`).
-- `addComment` – posts comments (and optional checklists) to tasks.
+- `get_users` – lists all visible users (`get_users` action).
+- `get_projects` – lists projects with optional state filters and `extra` details.
+- `get_project` – fetches a single project with optional extras.
+- `get_tasks` – lists every task in a project, optionally limited to active tasks and enriched with extras.
+- `get_task` – fetches a single task with optional extras/relations/subtasks.
+- `get_comments` – lists comments on a task (optionally include attached files).
+- `post_task` – creates tasks or subtasks.
+- `post_comment` – posts comments (and optional checklists) to tasks.
+
+### Adding optional extras (Worksection `extra` query param)
+
+Worksection’s API allows extra data to be pulled in by supplying the `extra` query parameter (comma-separated). The MCP tools expose the same capability via each tool’s `include` array input—it gets translated into `extra=<value1,value2,...>` when calling Worksection. For example, `get_projects` with `include: ["text", "users"]` results in:
+
+```
+?action=get_projects&id_project=PROJECT_ID&extra=text,users
+```
+
+Supported extras:
+
+- `get_projects` and `get_project` → `text`, `options`, `users` (matches Worksection’s project extras)
+- `get_tasks` and `get_task` → `text`, `files`, `comments`, `relations`, `subtasks`, `subscribers` (all helpers supported by `get_tasks`/`get_task`)
+- `get_comments` → `files` (include comment attachment details)
+
+Any combination can be specified, e.g. `extra=text,options,users` if you need the HTML description, restriction options, and project team in a single `get_projects` or `get_project` call.
 
 ## Exposed resources
 
 - `worksection://projects` – snapshot of all projects (text/options/users included).
-- `worksection://users` – mirrors the `listUsers` tool output.
+- `worksection://users` – mirrors the `get_users` tool output.
 - `worksection://projects/{projectId}/tasks` – lazily loads tasks for the supplied project ID (with comments/subtasks/etc.).
 - `worksection://tasks/{taskId}` – returns rich details for a specific task.
 
