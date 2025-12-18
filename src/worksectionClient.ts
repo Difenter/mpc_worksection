@@ -91,7 +91,7 @@ export class WorksectionClient {
       encoded.append(key, value);
     }
 
-    const raw = pairs.map(([key, value]) => `${key}=${value}`).join('&');
+    const raw = encoded.toString();
     return { encoded, raw };
   }
 
