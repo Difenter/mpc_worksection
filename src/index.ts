@@ -29,15 +29,28 @@ const respond = (data: unknown) => ({
   structuredContent: data
 });
 
-const respondError = (error: unknown) => ({
-  content: [
-    {
-      type: 'text' as const,
-      text: error instanceof Error ? error.message : String(error)
-    }
-  ],
-  isError: true as const
-});
+const logError = (context: string, error: unknown) => {
+  const label = context ? `[${context}]` : '[error]';
+  if (error instanceof Error) {
+    console.error(`${label} ${error.message}`);
+    console.error(error.stack);
+  } else {
+    console.error(`${label} ${String(error)}`);
+  }
+};
+
+const respondError = (error: unknown, context = 'mcp') => {
+  logError(context, error);
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: error instanceof Error ? error.message : String(error)
+      }
+    ],
+    isError: true as const
+  };
+};
 
 const commaSeparated = (values?: string[]) => (values && values.length ? values.join(', ') : undefined);
 
@@ -212,7 +225,7 @@ function registerTools(server: McpServer, client: WorksectionClient) {
         const users = Array.isArray(response.data) ? response.data : [];
         return respond({ count: users.length, users });
       } catch (error) {
-        return respondError(error);
+        return respondError(error, 'get_users');
       }
     }) as any
   );
@@ -241,7 +254,7 @@ function registerTools(server: McpServer, client: WorksectionClient) {
           requestedExtras: include ?? []
         });
       } catch (error) {
-        return respondError(error);
+        return respondError(error, 'get_projects');
       }
     }) as any
   );
@@ -263,7 +276,7 @@ function registerTools(server: McpServer, client: WorksectionClient) {
         const response = await client.call<{ data?: Record<string, unknown> }>('get_project', { params });
         return respond({ project: response.data ?? {} });
       } catch (error) {
-        return respondError(error);
+        return respondError(error, 'get_project');
       }
     }) as any
   );
@@ -289,7 +302,7 @@ function registerTools(server: McpServer, client: WorksectionClient) {
         const tasks = Array.isArray(response.data) ? response.data : [];
         return respond({ projectId, count: tasks.length, tasks });
       } catch (error) {
-        return respondError(error);
+        return respondError(error, 'get_tasks');
       }
     }) as any
   );
@@ -312,7 +325,7 @@ function registerTools(server: McpServer, client: WorksectionClient) {
         const response = await client.call<{ data?: Record<string, unknown> }>('get_task', { params });
         return respond({ task: response.data ?? {} });
       } catch (error) {
-        return respondError(error);
+        return respondError(error, 'get_task');
       }
     }) as any
   );
@@ -352,7 +365,7 @@ function registerTools(server: McpServer, client: WorksectionClient) {
 
         return respond({ task: response.data ?? {} });
       } catch (error) {
-        return respondError(error);
+        return respondError(error, 'post_task');
       }
     }) as any
   );
@@ -368,7 +381,7 @@ function registerTools(server: McpServer, client: WorksectionClient) {
     (async (args: AddCommentArgs) => {
       try {
         if (!args.text && !(args.checklist?.length)) {
-          return respondError(new Error('Provide comment text or at least one checklist item.'));
+          return respondError(new Error('Provide comment text or at least one checklist item.'), 'post_comment');
         }
 
         const params: RequestParams = {
@@ -386,7 +399,7 @@ function registerTools(server: McpServer, client: WorksectionClient) {
 
         return respond({ comment: response.data ?? {} });
       } catch (error) {
-        return respondError(error);
+        return respondError(error, 'post_comment');
       }
     }) as any
   );
@@ -409,7 +422,7 @@ function registerTools(server: McpServer, client: WorksectionClient) {
         const comments = Array.isArray(response.data) ? response.data : [];
         return respond({ taskId, count: comments.length, comments });
       } catch (error) {
-        return respondError(error);
+        return respondError(error, 'get_comments');
       }
     }) as any
   );
@@ -436,7 +449,7 @@ function registerTools(server: McpServer, client: WorksectionClient) {
         const costs = Array.isArray(response.data) ? response.data : [];
         return respond({ count: costs.length, costs });
       } catch (error) {
-        return respondError(error);
+        return respondError(error, 'get_costs');
       }
     }) as any
   );
@@ -463,7 +476,7 @@ function registerTools(server: McpServer, client: WorksectionClient) {
         const response = await client.call<{ data?: Record<string, unknown> }>('get_costs_total', { params });
         return respond({ totals: response.data ?? {} });
       } catch (error) {
-        return respondError(error);
+        return respondError(error, 'get_costs_total');
       }
     }) as any
   );
@@ -481,7 +494,7 @@ function registerTools(server: McpServer, client: WorksectionClient) {
         const timers = Array.isArray(response.data) ? response.data : [];
         return respond({ count: timers.length, timers });
       } catch (error) {
-        return respondError(error);
+        return respondError(error, 'get_timers');
       }
     }) as any
   );
