@@ -75,23 +75,30 @@ export class WorksectionClient {
   }
 
   private buildParamState(action: string, params: RequestParams) {
-    const pairs: Array<[string, string]> = [['action', action]];
+    const encoded = new URLSearchParams();
+
+    const appendParam = (key: string, value: ParamValue): void => {
+      if (value === undefined || value === null) {
+        return;
+      }
+
+      if (Array.isArray(value)) {
+        value.forEach((item, index) => {
+          appendParam(`${key}[${index}]`, item);
+        });
+        return;
+      }
+
+      encoded.append(key, this.coerceToString(value));
+    };
+
+    appendParam('action', action);
 
     for (const [key, value] of Object.entries(params)) {
-      if (value === undefined || value === null) continue;
-      if (Array.isArray(value)) {
-        value.forEach(item => pairs.push([key, this.coerceToString(item)]));
-      } else {
-        pairs.push([key, this.coerceToString(value)]);
-      }
+      appendParam(key, value);
     }
 
-    const encoded = new URLSearchParams();
-    for (const [key, value] of pairs) {
-      encoded.append(key, value);
-    }
-
-    const raw = pairs.map(([key, value]) => `${key}=${value}`).join('&');
+    const raw = encoded.toString();
     return { encoded, raw };
   }
 

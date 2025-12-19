@@ -355,11 +355,10 @@ function registerTools(server: McpServer, client: WorksectionClient) {
           max_time: args.estimateHours,
           max_money: args.budget,
           tags: commaSeparated(args.tags),
-          'todo[]': args.checklist && args.checklist.length ? args.checklist : undefined
+          todo: args.checklist && args.checklist.length ? args.checklist : undefined
         };
 
         const response = await client.call<{ data?: Record<string, unknown> }>('post_task', {
-          method: 'POST',
           params
         });
 
@@ -389,11 +388,10 @@ function registerTools(server: McpServer, client: WorksectionClient) {
           text: args.text,
           hidden: commaSeparated(args.visibilityEmails),
           mention: commaSeparated(args.mentionEmails),
-          'todo[]': args.checklist && args.checklist.length ? args.checklist : undefined
+          todo: args.checklist && args.checklist.length ? args.checklist : undefined
         };
 
         const response = await client.call<{ data?: Record<string, unknown> }>('post_comment', {
-          method: 'POST',
           params
         });
 
