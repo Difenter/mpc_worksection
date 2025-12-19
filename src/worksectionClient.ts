@@ -47,8 +47,12 @@ export class WorksectionClient {
     const headers: Record<string, string> = { Accept: 'application/json' };
     let body: string | FormData | undefined;
 
-    if (method === 'GET') {
+    if (method === 'GET' || hasAttachments) {
       endpoint.search = encoded.toString();
+    }
+
+    if (method === 'GET') {
+      // no body for GET requests; params carried via query string
     } else if (hasAttachments) {
       const form = new FormData();
       encoded.forEach((value, key) => {
