@@ -5,7 +5,13 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 import pkg from '../package.json';
 import { loadConfig, type WorksectionConfig } from './config.js';
-import { WorksectionApiError, WorksectionClient, type RequestParams } from './worksectionClient.js';
+import {
+  WorksectionApiError,
+  WorksectionClient,
+  type RequestParams,
+  type AttachmentPayload,
+  type CallOptions
+} from './worksectionClient.js';
 
 const projectExtras = ['text', 'options', 'users'] as const;
 const taskExtras = ['text', 'files', 'comments', 'relations', 'subtasks', 'subscribers'] as const;
@@ -117,6 +123,12 @@ const getTaskOutputSchema = z.object({
   task: recordAny
 });
 
+const attachmentSchema = z.object({
+  filename: z.string().min(1, 'Attachment filename is required'),
+  data: z.string().min(1, 'Attachment data (base64) is required'),
+  contentType: z.string().optional()
+});
+
 const createTaskArgsSchema = z.object({
   projectId: z.string().min(1, 'Project ID is required'),
   title: z.string().min(1, 'Task title is required'),
@@ -132,7 +144,8 @@ const createTaskArgsSchema = z.object({
   mentionEmails: z.array(z.string()).optional(),
   estimateHours: z.number().nonnegative().optional(),
   budget: z.number().nonnegative().optional(),
-  tags: z.array(z.string()).optional()
+  tags: z.array(z.string()).optional(),
+  attachments: z.array(attachmentSchema).optional()
 });
 type CreateTaskArgs = z.infer<typeof createTaskArgsSchema>;
 const createTaskOutputSchema = z.object({
@@ -358,9 +371,41 @@ function registerTools(server: McpServer, client: WorksectionClient) {
           todo: args.checklist && args.checklist.length ? args.checklist : undefined
         };
 
-        const response = await client.call<{ data?: Record<string, unknown> }>('post_task', {
-          params
-        });
+        let attachments: AttachmentPayload[] | undefined;
+        if (args.attachments?.length) {
+          attachments = args.attachments.map((attachment, index) => {
+            let buffer: Buffer;
+            try {
+              buffer = Buffer.from(attachment.data, 'base64');
+            } catch {
+              throw new Error(`Attachment "${attachment.filename}" data must be valid base64.`);
+            }
+
+            if (buffer.length === 0) {
+              throw new Error(`Attachment "${attachment.filename}" is empty or not valid base64 data.`);
+            }
+
+            const payload: AttachmentPayload = {
+              field: `attach[${index}]`,
+              filename: attachment.filename,
+              data: buffer
+            };
+
+            if (attachment.contentType) {
+              payload.contentType = attachment.contentType;
+            }
+
+            return payload;
+          });
+        }
+
+        const callOptions: CallOptions = { params };
+        if (attachments?.length) {
+          callOptions.method = 'POST';
+          callOptions.attachments = attachments;
+        }
+
+        const response = await client.call<{ data?: Record<string, unknown> }>('post_task', callOptions);
 
         return respond({ task: response.data ?? {} });
       } catch (error) {

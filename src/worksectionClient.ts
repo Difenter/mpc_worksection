@@ -8,9 +8,17 @@ type ParamValue = Primitive | Primitive[] | null | undefined;
 
 export type RequestParams = Record<string, ParamValue>;
 
+export interface AttachmentPayload {
+  field: string;
+  filename: string;
+  data: Buffer;
+  contentType?: string;
+}
+
 export interface CallOptions {
   method?: 'GET' | 'POST';
   params?: RequestParams;
+  attachments?: AttachmentPayload[];
 }
 
 export class WorksectionApiError extends Error {
@@ -24,7 +32,9 @@ export class WorksectionClient {
   constructor(private readonly config: WorksectionConfig) {}
 
   async call<T = unknown>(action: string, options?: CallOptions): Promise<T> {
-    const method = options?.method ?? 'GET';
+    const attachments = options?.attachments ?? [];
+    const hasAttachments = attachments.length > 0;
+    const method = hasAttachments ? 'POST' : options?.method ?? 'GET';
     const params = this.prepareParams(options?.params);
     const { encoded, raw } = this.buildParamState(action, params);
 
@@ -35,10 +45,28 @@ export class WorksectionClient {
     const endpoint = new URL(basePath, this.config.accountUrl);
 
     const headers: Record<string, string> = { Accept: 'application/json' };
-    let body: string | undefined;
+    let body: string | FormData | undefined;
 
     if (method === 'GET') {
       endpoint.search = encoded.toString();
+    } else if (hasAttachments) {
+      const form = new FormData();
+      encoded.forEach((value, key) => {
+        form.append(key, value);
+      });
+
+      attachments.forEach(attachment => {
+        const arrayBuffer = attachment.data.buffer.slice(
+          attachment.data.byteOffset,
+          attachment.data.byteOffset + attachment.data.byteLength
+        ) as ArrayBuffer;
+        const blob = new Blob([arrayBuffer], {
+          type: attachment.contentType ?? 'application/octet-stream'
+        });
+        form.append(attachment.field, blob, attachment.filename);
+      });
+
+      body = form;
     } else {
       body = encoded.toString();
       headers['Content-Type'] = 'application/x-www-form-urlencoded';
