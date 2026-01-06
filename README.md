@@ -117,3 +117,32 @@ Create an entry like the following (or adapt `mcp.json`) and set `WORKSECTION_TR
 ```
 
 Use `npm run inspector` (which forces stdio transport) if you want to debug with the MCP Inspector.
+
+## Docker
+
+### Build & run (HTTP mode)
+
+```bash
+docker build -t worksection-mcp .
+docker run --rm -p 3333:3333 \
+  -e WORKSECTION_TRANSPORT=http \
+  -e WORKSECTION_HTTP_PORT=3333 \
+  -e WORKSECTION_HTTP_HOST=0.0.0.0 \
+  -e WORKSECTION_ACCOUNT_URL="https://example.worksection.com" \
+  -e WORKSECTION_ADMIN_API_KEY="..." \
+  worksection-mcp
+```
+
+### Docker Compose
+
+Put your secrets into `.env` (Compose automatically reads it), then:
+
+```bash
+docker compose up --build
+```
+
+If you set `SLACK_APP_JETBASE_AGENT_PM_TEST` in `.env`, prefer a raw JSON value (no surrounding quotes), e.g.:
+
+```dotenv
+SLACK_APP_JETBASE_AGENT_PM_TEST={"NAME":"","OAUTH_TOKENS":{"USER_OAUTH_TOKEN":"","BOT_USER_OAUTH_TOKEN":""}}
+```
