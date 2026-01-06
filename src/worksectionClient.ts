@@ -15,10 +15,18 @@ export interface AttachmentPayload {
   contentType?: string;
 }
 
+export interface AttachmentInput {
+  field: string;
+  filename: string;
+  contentType?: string;
+  data?: Buffer;
+  sourceUrl?: string;
+}
+
 export interface CallOptions {
   method?: 'GET' | 'POST';
   params?: RequestParams;
-  attachments?: AttachmentPayload[];
+  attachments?: AttachmentInput[];
 }
 
 export class WorksectionApiError extends Error {
@@ -32,7 +40,7 @@ export class WorksectionClient {
   constructor(private readonly config: WorksectionConfig) {}
 
   async call<T = unknown>(action: string, options?: CallOptions): Promise<T> {
-    const attachments = options?.attachments ?? [];
+    const attachments = await this.prepareAttachments(options?.attachments);
     const hasAttachments = attachments.length > 0;
     const method = hasAttachments ? 'POST' : options?.method ?? 'GET';
     const params = this.prepareParams(options?.params);
@@ -104,6 +112,70 @@ export class WorksectionClient {
     const next: RequestParams = { ...(params ?? {}) };
 
     return next;
+  }
+
+  private async prepareAttachments(attachments?: AttachmentInput[]): Promise<AttachmentPayload[]> {
+    if (!attachments?.length) {
+      return [];
+    }
+
+    const payloads: AttachmentPayload[] = [];
+    for (const attachment of attachments) {
+      if (attachment.data && attachment.sourceUrl) {
+        throw new WorksectionApiError(`Attachment "${attachment.filename}" cannot define both data and sourceUrl.`);
+      }
+
+      let buffer: Buffer | undefined = attachment.data;
+      if (!buffer && attachment.sourceUrl) {
+        buffer = await this.fetchRemoteAttachment(attachment.sourceUrl);
+      }
+
+      if (!buffer) {
+        throw new WorksectionApiError(
+          `Attachment "${attachment.filename}" must include base64 data or a download URL (sourceUrl).`
+        );
+      }
+
+      const payload: AttachmentPayload = {
+        field: attachment.field,
+        filename: attachment.filename,
+        data: buffer
+      };
+
+      if (attachment.contentType) {
+        payload.contentType = attachment.contentType;
+      }
+
+      payloads.push(payload);
+    }
+
+    return payloads;
+  }
+
+  private async fetchRemoteAttachment(url: string): Promise<Buffer> {
+    const headers: Record<string, string> = {};
+    const token = this.config.slackBotToken;
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(url, { headers });
+    } catch (error) {
+      throw new WorksectionApiError(`Failed to download attachment from ${url}: ${(error as Error).message}`);
+    }
+
+    if (!response.ok) {
+      throw new WorksectionApiError(`Downloading attachment failed (${response.status}): ${response.statusText}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    if (arrayBuffer.byteLength === 0) {
+      throw new WorksectionApiError(`Attachment at ${url} is empty.`);
+    }
+
+    return Buffer.from(arrayBuffer);
   }
 
   private buildParamState(action: string, params: RequestParams) {

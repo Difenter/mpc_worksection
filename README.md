@@ -24,6 +24,9 @@ Set the following environment variables before running the server:
 | `WORKSECTION_TRANSPORT` | `http` (default), `stdio`, or `both`. |
 | `WORKSECTION_HTTP_PORT` | Port for the HTTP MCP endpoint (default `3333`). |
 | `WORKSECTION_HTTP_HOST` | Host/interface for HTTP mode (default `0.0.0.0`). |
+| `SLACK_FILE_BEARER_TOKEN` | *(Optional)* Bearer token used when downloading attachment URLs (e.g. Slack file links) before uploading to Worksection. |
+
+If you already store a Slack app blob that includes `OAUTH_TOKENS.BOT_USER_OAUTH_TOKEN` (for example via `SLACK_APP_JETBASE_AGENT_PM_TEST`), the server will read that environment variable and reuse the contained bot token automatically, so you don’t have to duplicate the secret.
 
 ## Running the server
 
@@ -53,7 +56,7 @@ To run in stdio mode (for tools like the MCP Inspector or Claude’s CLI), start
 - `get_costs` – returns cost rows; optional `projectId`, `taskId`, `startDate`, `endDate`, `isTimer`, `filter`.
 - `get_costs_total` – aggregates totals; optional `projectId`, `taskId`, `startDate`, `endDate`, `isTimer`, `filter`, `include: ["projects"]`.
 - `get_timers` – lists currently running timers. No inputs.
-- `post_task` – creates tasks/subtasks; optional fields include `description`, `parentTaskId`, `assigneeEmail`, `priority`, `startDate`, `dueDate`, `checklist`, `subscribeEmails`, `visibilityEmails`, `mentionEmails`, `estimateHours`, `budget`, `tags`.
+- `post_task` – creates tasks/subtasks; optional fields include `description`, `parentTaskId`, `assigneeEmail`, `priority`, `startDate`, `dueDate`, `checklist`, `subscribeEmails`, `visibilityEmails`, `mentionEmails`, `estimateHours`, `budget`, `tags`, and `attachments` (either inlined base64 data or `sourceUrl` that the server downloads via Slack-authenticated HTTP).
 - `post_comment` – posts comments; optional `text`, `checklist`, `visibilityEmails`, `mentionEmails` (one of `text` or `checklist` required).
 
 ### Using Worksection extras via `include`

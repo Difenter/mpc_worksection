@@ -9,7 +9,7 @@ import {
   WorksectionApiError,
   WorksectionClient,
   type RequestParams,
-  type AttachmentPayload,
+  type AttachmentInput,
   type CallOptions
 } from './worksectionClient.js';
 
@@ -123,11 +123,22 @@ const getTaskOutputSchema = z.object({
   task: recordAny
 });
 
-const attachmentSchema = z.object({
-  filename: z.string().min(1, 'Attachment filename is required'),
-  data: z.string().min(1, 'Attachment data (base64) is required'),
-  contentType: z.string().optional()
-});
+const attachmentSchema = z
+  .object({
+    filename: z.string().min(1, 'Attachment filename is required'),
+    data: z.string().min(1, 'Attachment data (base64) is required').optional(),
+    sourceUrl: z.string().url('Attachment sourceUrl must be a valid URL').optional(),
+    contentType: z.string().optional()
+  })
+  .refine(
+    value => {
+      return Boolean(value.data?.length) || Boolean(value.sourceUrl?.length);
+    },
+    {
+      message: 'Provide attachment data (base64) or sourceUrl.',
+      path: ['data']
+    }
+  );
 
 const createTaskArgsSchema = z.object({
   projectId: z.string().min(1, 'Project ID is required'),
@@ -371,28 +382,37 @@ function registerTools(server: McpServer, client: WorksectionClient) {
           todo: args.checklist && args.checklist.length ? args.checklist : undefined
         };
 
-        let attachments: AttachmentPayload[] | undefined;
+        let attachments: AttachmentInput[] | undefined;
         if (args.attachments?.length) {
           attachments = args.attachments.map((attachment, index) => {
-            let buffer: Buffer;
-            try {
-              buffer = Buffer.from(attachment.data, 'base64');
-            } catch {
-              throw new Error(`Attachment "${attachment.filename}" data must be valid base64.`);
+            let buffer: Buffer | undefined;
+            if (attachment.data) {
+              try {
+                buffer = Buffer.from(attachment.data, 'base64');
+              } catch {
+                throw new Error(`Attachment "${attachment.filename}" data must be valid base64.`);
+              }
+
+              if (buffer.length === 0) {
+                throw new Error(`Attachment "${attachment.filename}" is empty or not valid base64 data.`);
+              }
             }
 
-            if (buffer.length === 0) {
-              throw new Error(`Attachment "${attachment.filename}" is empty or not valid base64 data.`);
-            }
-
-            const payload: AttachmentPayload = {
+            const payload: AttachmentInput = {
               field: `attach[${index}]`,
-              filename: attachment.filename,
-              data: buffer
+              filename: attachment.filename
             };
 
             if (attachment.contentType) {
               payload.contentType = attachment.contentType;
+            }
+
+            if (buffer) {
+              payload.data = buffer;
+            } else if (attachment.sourceUrl) {
+              payload.sourceUrl = attachment.sourceUrl;
+            } else {
+              throw new Error(`Attachment "${attachment.filename}" requires base64 data or sourceUrl.`);
             }
 
             return payload;
