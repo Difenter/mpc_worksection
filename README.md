@@ -125,11 +125,12 @@ Use `npm run inspector` (which forces stdio transport) if you want to debug with
 ```bash
 docker build -t worksection-mcp .
 docker run --rm -p 3333:3333 \
+  -e WORKSECTION_ACCOUNT_URL=https://me0000.worksection.com \
+  -e WORKSECTION_ADMIN_API_KEY=909ijs9djvsjs09jv90j09joikjm1f20 \
   -e WORKSECTION_TRANSPORT=http \
   -e WORKSECTION_HTTP_PORT=3333 \
   -e WORKSECTION_HTTP_HOST=0.0.0.0 \
-  -e WORKSECTION_ACCOUNT_URL="https://example.worksection.com" \
-  -e WORKSECTION_ADMIN_API_KEY="..." \
+  -e SLACK_APP_JETBASE_AGENT_PM_TEST="{\"NAME\":\"Agent_PM_Test\",\"OAUTH_TOKENS\":{\"USER_OAUTH_TOKEN\":\"xoxp-...\",\"BOT_USER_OAUTH_TOKEN\":\"xoxb-...\"}}" \
   worksection-mcp
 ```
 
