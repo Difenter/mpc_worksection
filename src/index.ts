@@ -202,8 +202,8 @@ const getCommentsOutputSchema = z.object({
 });
 
 const getCostsArgsSchemaBase = z.object({
-  projectId: z.string().optional(),
-  taskId: z.string().optional(),
+  projectId: z.coerce.string().optional(),
+  taskId: z.coerce.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   isTimer: z.boolean().optional(),
@@ -232,8 +232,8 @@ const getCostsOutputSchema = z.object({
 });
 
 const getCostsTotalArgsSchemaBase = z.object({
-  projectId: z.string().optional(),
-  taskId: z.string().optional(),
+  projectId: z.coerce.string().optional(),
+  taskId: z.coerce.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   isTimer: z.boolean().optional(),
@@ -588,7 +588,10 @@ function registerTools(server: McpServer, client: WorksectionClient) {
     {
       title: "List task/project costs",
       description:
-        "Calls get_costs to fetch logged time/money entries. Requires at least one filter parameter (projectId, taskId, startDate, endDate, or filter) to prevent unbounded queries.",
+        "Calls get_costs to fetch logged time/money entries. Requires at least one filter parameter (projectId, taskId, startDate, endDate, or filter) to prevent unbounded queries. " +
+        "The filter parameter supports Worksection filter syntax: Integer fields (id=TASK_ID, project=PROJECT_ID) with operators =, in; " +
+        "String fields (comment) with operators =, has; Date fields (dateadd in DD.MM.YYYY format) with operators >, <, >=, <=, !=, =; " +
+        "Combine with parentheses and logical operations (and, or). Example: project = 2456, comment has 'report', dateadd>'01.05.2021', or (comment has 'report' or comment has 'review') and dateadd>'01.01.2026'.",
       inputSchema: getCostsArgsSchemaBase.shape,
       outputSchema: getCostsOutputSchema.shape,
     } as any,
@@ -635,7 +638,10 @@ function registerTools(server: McpServer, client: WorksectionClient) {
     {
       title: "Get cost totals",
       description:
-        "Calls get_costs_total to aggregate time/money per project or task with optional per-project breakdowns. Requires at least one filter parameter (projectId, taskId, startDate, endDate, or filter) to prevent unbounded queries.",
+        "Calls get_costs_total to aggregate time/money per project or task with optional per-project breakdowns. Requires at least one filter parameter (projectId, taskId, startDate, endDate, or filter) to prevent unbounded queries. " +
+        "The filter parameter supports Worksection filter syntax: Integer fields (id=TASK_ID, project=PROJECT_ID) with operators =, in; " +
+        "String fields (comment) with operators =, has; Date fields (dateadd in DD.MM.YYYY format) with operators >, <, >=, <=, !=, =; " +
+        "Combine with parentheses and logical operations (and, or). Example: project = 2456, comment has 'report', dateadd>'01.05.2021', or (comment has 'report' or comment has 'review') and dateadd>'01.01.2026'.",
       inputSchema: getCostsTotalArgsSchemaBase.shape,
       outputSchema: getCostsTotalOutputSchema.shape,
     } as any,
