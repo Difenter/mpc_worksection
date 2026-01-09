@@ -296,12 +296,21 @@ function registerTools(server: McpServer, client: WorksectionClient) {
       inputSchema: emptyArgsSchema.shape,
       outputSchema: listUsersOutputSchema.shape,
     } as any,
-    (async () => {
+    (async (args: unknown = {}) => {
       try {
+        // Validate that args is an empty object (or undefined/null)
+        const validatedArgs = emptyArgsSchema.parse(args ?? {});
+        if (Object.keys(validatedArgs).length > 0) {
+          throw new Error("get_users does not accept any arguments");
+        }
+
+        console.log("[get_users] Calling Worksection API...");
         const response = await client.call<{ data?: unknown[] }>("get_users");
         const users = Array.isArray(response.data) ? response.data : [];
+        console.log(`[get_users] Successfully retrieved ${users.length} users`);
         return respond({ count: users.length, users });
       } catch (error) {
+        console.error("[get_users] Error occurred:", error);
         return respondError(error, "get_users");
       }
     }) as any
@@ -589,9 +598,10 @@ function registerTools(server: McpServer, client: WorksectionClient) {
       title: "List task/project costs",
       description:
         "Calls get_costs to fetch logged time/money entries. Requires at least one filter parameter (projectId, taskId, startDate, endDate, or filter) to prevent unbounded queries. " +
-        "The filter parameter supports Worksection filter syntax: Integer fields (id=TASK_ID, project=PROJECT_ID) with operators =, in; " +
-        "String fields (comment) with operators =, has; Date fields (dateadd in DD.MM.YYYY format) with operators >, <, >=, <=, !=, =; " +
-        "Combine with parentheses and logical operations (and, or). Example: project = 2456, comment has 'report', dateadd>'01.05.2021', or (comment has 'report' or comment has 'review') and dateadd>'01.01.2026'.",
+        "The filter parameter supports Worksection filter syntax for specific fields. " +
+        "Supported filter fields: id (INT), project (INT), task (INT), comment (STRING with 'has' or '='), dateadd (DATE in DD.MM.YYYY format with >, <, >=, <=, !=, =). " +
+        "Note: User filtering (user, user_id, user.email) may not be supported in the filter parameter for get_costs. Use projectId, taskId, or date ranges instead. " +
+        "Examples: 'project=2456', 'comment has \"report\"', 'dateadd>01.05.2021', or '(comment has \"report\" or comment has \"review\") and dateadd>01.01.2026'.",
       inputSchema: getCostsArgsSchemaBase.shape,
       outputSchema: getCostsOutputSchema.shape,
     } as any,
@@ -622,12 +632,29 @@ function registerTools(server: McpServer, client: WorksectionClient) {
           params.is_timer = args.isTimer ? 1 : 0;
         if (args.filter) params.filter = args.filter;
 
+        console.log(
+          `[get_costs] Calling with params:`,
+          JSON.stringify(params, null, 2)
+        );
         const response = await client.call<{ data?: unknown[] }>("get_costs", {
           params,
         });
         const costs = Array.isArray(response.data) ? response.data : [];
+        console.log(
+          `[get_costs] Successfully retrieved ${costs.length} cost entries`
+        );
         return respond({ count: costs.length, costs });
       } catch (error) {
+        console.error(`[get_costs] Error:`, error);
+        // If the error mentions filter format, provide additional guidance
+        if (error instanceof Error && error.message.includes("filter")) {
+          const enhancedError = new Error(
+            `${error.message}\n\n` +
+              `Note: The filter parameter may not support all field types. ` +
+              `Try using projectId, taskId, or date ranges (startDate/endDate) instead of filter for user-based filtering.`
+          );
+          return respondError(enhancedError, "get_costs");
+        }
         return respondError(error, "get_costs");
       }
     }) as any
@@ -718,8 +745,14 @@ function registerTools(server: McpServer, client: WorksectionClient) {
       inputSchema: emptyArgsSchema.shape,
       outputSchema: getTimersOutputSchema.shape,
     } as any,
-    (async () => {
+    (async (args: unknown = {}) => {
       try {
+        // Validate that args is an empty object (or undefined/null)
+        const validatedArgs = emptyArgsSchema.parse(args ?? {});
+        if (Object.keys(validatedArgs).length > 0) {
+          throw new Error("get_timers does not accept any arguments");
+        }
+
         const response = await client.call<{ data?: unknown[] }>("get_timers");
         const timers = Array.isArray(response.data) ? response.data : [];
         return respond({ count: timers.length, timers });
@@ -905,10 +938,16 @@ async function startHttpServer(config: WorksectionConfig) {
     });
 
     try {
+      // Log incoming request for debugging
+      console.log("[MCP Request]", JSON.stringify(req.body, null, 2));
+
       await server.connect(transport);
       await transport.handleRequest(req, res, req.body);
     } catch (error) {
-      console.error("HTTP MCP request failed:", error);
+      console.error("[MCP] HTTP request failed:", error);
+      if (error instanceof Error) {
+        console.error("[MCP] Error stack:", error.stack);
+      }
       if (!res.headersSent) {
         res.status(500).json({
           jsonrpc: "2.0",

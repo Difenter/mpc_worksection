@@ -91,18 +91,56 @@ export class WorksectionClient {
 
     let response: Response;
     try {
+      // Log request details in development
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[Worksection API] ${method} ${endpoint.toString()}`);
+        if (method === 'GET') {
+          console.log(`[Worksection API] Query params: ${endpoint.search}`);
+        } else if (body) {
+          console.log(`[Worksection API] Body: ${typeof body === 'string' ? body : '[FormData]'}`);
+        }
+      }
+      
       response = await fetch(endpoint, init);
     } catch (error) {
       throw new WorksectionApiError(`Failed to reach Worksection API: ${(error as Error).message}`);
     }
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Worksection API] HTTP ${response.status} ${response.statusText}: ${errorText}`);
       throw new WorksectionApiError(`Worksection API HTTP ${response.status}: ${response.statusText}`, response.status);
     }
 
-    const json = (await response.json()) as { status?: string; message?: string; status_code?: number } & Record<string, unknown>;
+    const json = (await response.json()) as { 
+      status?: string; 
+      message?: string; 
+      status_code?: number;
+      message_details?: string;
+      test?: string;
+    } & Record<string, unknown>;
+    
+    // Log response in development
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[Worksection API] Response status: ${json.status}`);
+      if (json.status !== 'ok') {
+        console.error(`[Worksection API] Error response:`, JSON.stringify(json, null, 2));
+      }
+    }
+    
     if (json.status !== 'ok') {
-      throw new WorksectionApiError(json.message ?? 'Worksection API returned an error', json.status_code);
+      // Build a more informative error message
+      let errorMessage = json.message ?? 'Worksection API returned an error';
+      
+      if (json.message_details) {
+        errorMessage += ` (field: ${json.message_details})`;
+      }
+      
+      if (json.test) {
+        errorMessage += `. Expected format: ${String(json.test).trim()}`;
+      }
+      
+      throw new WorksectionApiError(errorMessage, json.status_code);
     }
 
     return json as T;
