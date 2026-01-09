@@ -639,9 +639,9 @@ function registerTools(server: McpServer, client: WorksectionClient) {
       title: "Get cost totals",
       description:
         "Calls get_costs_total to aggregate time/money per project or task with optional per-project breakdowns. Requires at least one filter parameter (projectId, taskId, startDate, endDate, or filter) to prevent unbounded queries. " +
-        "The filter parameter supports Worksection filter syntax: Integer fields (id=TASK_ID, project=PROJECT_ID) with operators =, in; " +
-        "String fields (comment) with operators =, has; Date fields (dateadd in DD.MM.YYYY format) with operators >, <, >=, <=, !=, =; " +
-        "Combine with parentheses and logical operations (and, or). Example: project = 2456, comment has 'report', dateadd>'01.05.2021', or (comment has 'report' or comment has 'review') and dateadd>'01.01.2026'.",
+        "The filter parameter supports Worksection filter syntax for multiple projects selection: Filter by ID (project=2456), Filter by ID range (project in (1234, 1240)), " +
+        "Combining filters with parentheses and logical operators and, or (must be lowercase). Example: project=2456, project in (1234, 1240), or (project=2456 and project=2464) or project in (2450, 2470). " +
+        "The include parameter supports: projects (total and monthly costs for each project), tasks (total costs for each task and subtask), tasks_top_level (total costs for tasks only, including subtask costs).",
       inputSchema: getCostsTotalArgsSchemaBase.shape,
       outputSchema: getCostsTotalOutputSchema.shape,
     } as any,
@@ -671,13 +671,38 @@ function registerTools(server: McpServer, client: WorksectionClient) {
         if (typeof args.isTimer === "boolean")
           params.is_timer = args.isTimer ? 1 : 0;
         if (args.filter) params.filter = args.filter;
-        if (args.include?.length) params.extra = args.include.join(", ");
 
-        const response = await client.call<{ data?: Record<string, unknown> }>(
-          "get_costs_total",
-          { params }
-        );
-        return respond({ totals: response.data ?? {} });
+        // Build extra parameter: if include is provided, use it; otherwise auto-add 'projects' when projectId is used
+        const extraParts: string[] = [];
+        if (args.include?.length) {
+          extraParts.push(...args.include);
+        } else if (args.projectId && !args.taskId) {
+          // Auto-include 'projects' when filtering by projectId (unless taskId is specified, which ignores projects)
+          extraParts.push("projects");
+        }
+        if (extraParts.length) {
+          params.extra = extraParts.join(", ");
+        }
+
+        const response = await client.call<{
+          data?: Record<string, unknown>;
+          [key: string]: unknown;
+        }>("get_costs_total", { params });
+
+        // The API might return totals directly in data, or the entire response might be the totals
+        // Check if data exists and has content, otherwise return the full response structure
+        if (response.data && Object.keys(response.data).length > 0) {
+          return respond({ totals: response.data });
+        }
+
+        // If data is empty, check if totals are at the root level
+        const { data, ...rest } = response;
+        if (Object.keys(rest).length > 0) {
+          return respond({ totals: rest });
+        }
+
+        // Fallback to empty object if nothing found
+        return respond({ totals: {} });
       } catch (error) {
         return respondError(error, "get_costs_total");
       }
