@@ -28,8 +28,8 @@ const pkgVersion = typeof pkg.version === 'string' ? pkg.version : '0.0.0';
 const respond = (data: unknown) => ({
   content: [
     {
-      type: 'json' as const,
-      json: data
+      type: 'text' as const,
+      text: JSON.stringify(data, null, 2)
     }
   ],
   structuredContent: data
@@ -74,6 +74,7 @@ const formatWsDate = (raw?: string) => {
 
 const recordAny = z.record(z.string(), z.any());
 
+const emptyArgsSchema = z.object({});
 const listUsersOutputSchema = z.object({
   count: z.number(),
   users: z.array(recordAny)
@@ -238,11 +239,12 @@ async function completeProjectIds(client: WorksectionClient, value: string): Pro
 function registerTools(server: McpServer, client: WorksectionClient) {
   server.registerTool(
     'get_users',
-  {
-    title: 'List Worksection users',
-    description: 'Fetches account users through the get_users API action.',
-    outputSchema: listUsersOutputSchema.shape
-  } as any,
+    {
+      title: 'List Worksection users',
+      description: 'Fetches account users through the get_users API action.',
+      inputSchema: emptyArgsSchema.shape,
+      outputSchema: listUsersOutputSchema.shape
+    } as any,
     (async () => {
       try {
         const response = await client.call<{ data?: unknown[] }>('get_users');
@@ -549,6 +551,7 @@ function registerTools(server: McpServer, client: WorksectionClient) {
     {
       title: 'List running timers',
       description: 'Calls get_timers to show active timers with IDs, start times, and owners.',
+      inputSchema: emptyArgsSchema.shape,
       outputSchema: getTimersOutputSchema.shape
     } as any,
     (async () => {
