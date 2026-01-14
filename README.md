@@ -55,6 +55,7 @@ To run in stdio mode (for tools like the MCP Inspector or Claude’s CLI), start
 - `get_comments` – lists comments on `taskId`; optional `include: ["files"]` to include attachment metadata.
 - `get_task_tags` – lists task tags; optional `group` (group name or ID), `type` (`status` or `label`), and `access` (`public` or `private`) map directly to Worksection’s `get_task_tags` parameters.
 - `get_task_tag_groups` – lists task tag groups; optional `type` (`status` or `label`) and `access` (`public` or `private`).
+- `update_task_tags` – sets new and removes previously set tags for a task; requires `taskId`, optionally `plus` (tags to add) and `minus` (tags to remove).
 - `get_costs` – returns cost rows; optional `projectId`, `taskId`, `startDate`, `endDate`, `isTimer`, `filter`.
 - `get_costs_total` – aggregates totals; optional `projectId`, `taskId`, `startDate`, `endDate`, `isTimer`, `filter`, `include: ["projects"]`.
 - `get_timers` – lists currently running timers. No inputs.

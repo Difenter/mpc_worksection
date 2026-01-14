@@ -222,6 +222,16 @@ const getTaskTagGroupsOutputSchema = z.object({
   groups: z.array(recordAny),
 });
 
+const updateTaskTagsArgsSchema = z.object({
+  taskId: z.string().min(1, "Task ID is required"),
+  plus: z.array(z.string()).optional(),
+  minus: z.array(z.string()).optional(),
+});
+type UpdateTaskTagsArgs = z.infer<typeof updateTaskTagsArgsSchema>;
+const updateTaskTagsOutputSchema = z.object({
+  status: z.string(),
+});
+
 const getCostsArgsSchemaBase = z.object({
   projectId: z.coerce.string().optional(),
   taskId: z.coerce.string().optional(),
@@ -664,6 +674,36 @@ function registerTools(server: McpServer, client: WorksectionClient) {
         return respond({ count: groups.length, groups });
       } catch (error) {
         return respondError(error, "get_task_tag_groups");
+      }
+    }) as any
+  );
+
+  server.registerTool(
+    "update_task_tags",
+    {
+      title: "Update task tags",
+      description: "Sets new and removes previously set tags for selected task.",
+      inputSchema: updateTaskTagsArgsSchema.shape,
+      outputSchema: updateTaskTagsOutputSchema.shape,
+    } as any,
+    (async (args: UpdateTaskTagsArgs) => {
+      try {
+        const params: RequestParams = {
+          id_task: args.taskId,
+          plus: commaSeparated(args.plus),
+          minus: commaSeparated(args.minus),
+        };
+
+        const response = await client.call<{ status: string }>(
+          "update_task_tags",
+          {
+            method: "POST", // The docs say POST
+            params,
+          }
+        );
+        return respond({ status: response.status });
+      } catch (error) {
+        return respondError(error, "update_task_tags");
       }
     }) as any
   );
