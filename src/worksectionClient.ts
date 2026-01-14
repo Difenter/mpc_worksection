@@ -93,11 +93,11 @@ export class WorksectionClient {
     try {
       // Log request details in development
       if (process.env.NODE_ENV !== 'production') {
-        console.log(`[Worksection API] ${method} ${endpoint.toString()}`);
+        console.error(`[Worksection API] ${method} ${endpoint.toString()}`);
         if (method === 'GET') {
-          console.log(`[Worksection API] Query params: ${endpoint.search}`);
+          console.error(`[Worksection API] Query params: ${endpoint.search}`);
         } else if (body) {
-          console.log(`[Worksection API] Body: ${typeof body === 'string' ? body : '[FormData]'}`);
+          console.error(`[Worksection API] Body: ${typeof body === 'string' ? body : '[FormData]'}`);
         }
       }
       
@@ -122,7 +122,7 @@ export class WorksectionClient {
     
     // Log response in development
     if (process.env.NODE_ENV !== 'production') {
-      console.log(`[Worksection API] Response status: ${json.status}`);
+      console.error(`[Worksection API] Response status: ${json.status}`);
       if (json.status !== 'ok') {
         console.error(`[Worksection API] Error response:`, JSON.stringify(json, null, 2));
       }

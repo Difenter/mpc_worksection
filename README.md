@@ -49,6 +49,7 @@ To run in stdio mode (for tools like the MCP Inspector or Claude’s CLI), start
 
 - `get_users` – lists all visible users (`get_users` action). No inputs.
 - `get_projects` – lists projects; optional `filter` (`active`, `pending`, `archive`) and `include` (`text`, `options`, `users`) map to Worksection’s `extra`.
+- `search_tasks` – searches for tasks; requires at least one of `projectId`, `taskId`, `emailUserFrom`, `emailUserTo`, or `filter`. `filter` supports various criteria (e.g., `name has 'Report'`, `dateadd > '01.01.2023'`). Note: Defaults to searching `active` tasks; use `status: "done"` to search completed tasks.
 - `get_project` – fetches a single project; optional `include` supports the same extras (`text`, `options`, `users`).
 - `get_tasks` – lists tasks inside `projectId`; optional `activeOnly` and `include` (`text`, `files`, `comments`, `relations`, `subtasks`, `subscribers`).
 - `get_task` – fetches one task; optional `include` (same as `get_tasks`) and `activeSubtasksOnly`.
