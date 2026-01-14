@@ -322,6 +322,15 @@ const addProjectMembersOutputSchema = z.object({
   status: z.string(),
 });
 
+const deleteProjectMembersArgsSchema = z.object({
+  projectId: z.string().min(1, "Project ID is required"),
+  emails: z.array(z.string().email()).min(1, "At least one email is required"),
+});
+type DeleteProjectMembersArgs = z.infer<typeof deleteProjectMembersArgsSchema>;
+const deleteProjectMembersOutputSchema = z.object({
+  status: z.string(),
+});
+
 const getCostsArgsSchemaBase = z.object({
   projectId: z.coerce.string().optional(),
   taskId: z.coerce.string().optional(),
@@ -938,6 +947,33 @@ function registerTools(server: McpServer, client: WorksectionClient) {
         return respond({ status: response.status });
       } catch (error) {
         return respondError(error, "add_project_members");
+      }
+    }) as any
+  );
+
+  server.registerTool(
+    "delete_project_members",
+    {
+      title: "Remove project members",
+      description: "Removes account users from a selected project team.",
+      inputSchema: deleteProjectMembersArgsSchema.shape,
+      outputSchema: deleteProjectMembersOutputSchema.shape,
+    } as any,
+    (async (args: DeleteProjectMembersArgs) => {
+      try {
+        const response = await client.call<{ status: string }>(
+          "delete_project_members",
+          {
+            method: "POST",
+            params: {
+              id_project: args.projectId,
+              members: args.emails.join(","),
+            },
+          }
+        );
+        return respond({ status: response.status });
+      } catch (error) {
+        return respondError(error, "delete_project_members");
       }
     }) as any
   );
