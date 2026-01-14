@@ -212,6 +212,16 @@ const getTaskTagsOutputSchema = z.object({
   tags: z.array(recordAny),
 });
 
+const getTaskTagGroupsArgsSchema = z.object({
+  type: z.enum(["status", "label"]).optional(),
+  access: z.enum(["public", "private"]).optional(),
+});
+type GetTaskTagGroupsArgs = z.infer<typeof getTaskTagGroupsArgsSchema>;
+const getTaskTagGroupsOutputSchema = z.object({
+  count: z.number(),
+  groups: z.array(recordAny),
+});
+
 const getCostsArgsSchemaBase = z.object({
   projectId: z.coerce.string().optional(),
   taskId: z.coerce.string().optional(),
@@ -627,6 +637,33 @@ function registerTools(server: McpServer, client: WorksectionClient) {
         return respond({ count: tags.length, tags });
       } catch (error) {
         return respondError(error, "get_task_tags");
+      }
+    }) as any
+  );
+
+  server.registerTool(
+    "get_task_tag_groups",
+    {
+      title: "Get task tag groups",
+      description:
+        "Returns task tag groups with optional type and visibility filters.",
+      inputSchema: getTaskTagGroupsArgsSchema.shape,
+      outputSchema: getTaskTagGroupsOutputSchema.shape,
+    } as any,
+    (async (args: GetTaskTagGroupsArgs) => {
+      const params: RequestParams = {};
+      if (args.type) params.type = args.type;
+      if (args.access) params.access = args.access;
+
+      try {
+        const response = await client.call<{ data?: unknown[] }>(
+          "get_task_tag_groups",
+          { params }
+        );
+        const groups = Array.isArray(response.data) ? response.data : [];
+        return respond({ count: groups.length, groups });
+      } catch (error) {
+        return respondError(error, "get_task_tag_groups");
       }
     }) as any
   );
