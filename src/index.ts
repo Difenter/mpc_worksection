@@ -305,6 +305,14 @@ const updateTaskOutputSchema = z.object({
   task: recordAny,
 });
 
+const completeTaskArgsSchema = z.object({
+  taskId: z.string().min(1, "Task ID is required"),
+});
+type CompleteTaskArgs = z.infer<typeof completeTaskArgsSchema>;
+const completeTaskOutputSchema = z.object({
+  status: z.string(),
+});
+
 const getCostsArgsSchemaBase = z.object({
   projectId: z.coerce.string().optional(),
   taskId: z.coerce.string().optional(),
@@ -868,6 +876,32 @@ function registerTools(server: McpServer, client: WorksectionClient) {
         return respond({ task: response.data ?? {} });
       } catch (error) {
         return respondError(error, "update_task");
+      }
+    }) as any
+  );
+
+  server.registerTool(
+    "complete_task",
+    {
+      title: "Complete a Worksection task",
+      description: "Marks a task as completed.",
+      inputSchema: completeTaskArgsSchema.shape,
+      outputSchema: completeTaskOutputSchema.shape,
+    } as any,
+    (async (args: CompleteTaskArgs) => {
+      try {
+        const response = await client.call<{ status: string }>(
+          "complete_task",
+          {
+            method: "POST",
+            params: {
+              id_task: args.taskId,
+            },
+          }
+        );
+        return respond({ status: response.status });
+      } catch (error) {
+        return respondError(error, "complete_task");
       }
     }) as any
   );

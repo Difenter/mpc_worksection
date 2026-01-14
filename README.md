@@ -60,6 +60,7 @@ To run in stdio mode (for tools like the MCP Inspector or Claude’s CLI), start
 - `get_project_tag_groups` – lists project tag groups; optional `type` (`status` or `label`) and `access` (`public` or `private`).
 - `update_task_tags` – sets new and removes previously set tags for a task; requires `taskId`, optionally `plus` (tags to add) and `minus` (tags to remove).
 - `update_task` – updates an existing task; requires `taskId`. Optional: `title`, `assigneeEmail`, `priority` (0-10), `startDate`, `dueDate`, `closedDate` (DD.MM.YYYY), `estimateHours`, `budget`, `tags` (comma-separated, overwrites existing).
+- `complete_task` – marks a task as completed; requires `taskId`.
 - `get_costs` – returns cost rows; optional `projectId`, `taskId`, `startDate`, `endDate`, `isTimer`, `filter`.
 - `get_costs_total` – aggregates totals; optional `projectId`, `taskId`, `startDate`, `endDate`, `isTimer`, `filter`, `include: ["projects"]`.
 - `get_timers` – lists currently running timers. No inputs.
