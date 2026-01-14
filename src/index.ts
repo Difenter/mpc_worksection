@@ -125,6 +125,49 @@ const listProjectTasksOutputSchema = z.object({
   tasks: z.array(recordAny),
 });
 
+const updateTaskTagsArgsSchema = z.object({
+  taskId: z.string().min(1, "Task ID is required"),
+  add: z.array(z.string()).optional(),
+  minus: z.array(z.string()).optional(),
+});
+type UpdateTaskTagsArgs = z.infer<typeof updateTaskTagsArgsSchema>;
+const updateTaskTagsOutputSchema = z.object({
+  status: z.string(),
+});
+
+const searchTasksArgsSchemaBase = z.object({
+  projectId: z.coerce.string().optional(),
+  taskId: z.coerce.string().optional(),
+  emailUserFrom: z.string().email().optional(),
+  emailUserTo: z.string().email().optional(),
+  filter: z.string().optional(),
+  status: z.enum(["active", "done"]).optional(),
+  include: z.array(z.enum(["text", "files"])).optional(),
+});
+
+const searchTasksArgsSchema = searchTasksArgsSchemaBase.refine(
+  (data) => {
+    return Boolean(
+      data.projectId ||
+        data.taskId ||
+        data.emailUserFrom ||
+        data.emailUserTo ||
+        data.filter
+    );
+  },
+  {
+    message:
+      "At least one of the conditional parameters must be provided: projectId, taskId, emailUserFrom, emailUserTo, or filter.",
+    path: ["filter"],
+  }
+);
+type SearchTasksArgs = z.infer<typeof searchTasksArgsSchema>;
+
+const searchTasksOutputSchema = z.object({
+  count: z.number(),
+  tasks: z.array(recordAny),
+});
+
 const getTaskArgsSchema = z.object({
   taskId: z.string().min(1, "Task ID is required"),
   include: z.array(z.enum(taskExtras)).optional(),
@@ -304,10 +347,10 @@ function registerTools(server: McpServer, client: WorksectionClient) {
           throw new Error("get_users does not accept any arguments");
         }
 
-        console.log("[get_users] Calling Worksection API...");
+        console.error("[get_users] Calling Worksection API...");
         const response = await client.call<{ data?: unknown[] }>("get_users");
         const users = Array.isArray(response.data) ? response.data : [];
-        console.log(`[get_users] Successfully retrieved ${users.length} users`);
+        console.error(`[get_users] Successfully retrieved ${users.length} users`);
         return respond({ count: users.length, users });
       } catch (error) {
         console.error("[get_users] Error occurred:", error);
@@ -632,7 +675,7 @@ function registerTools(server: McpServer, client: WorksectionClient) {
           params.is_timer = args.isTimer ? 1 : 0;
         if (args.filter) params.filter = args.filter;
 
-        console.log(
+        console.error(
           `[get_costs] Calling with params:`,
           JSON.stringify(params, null, 2)
         );
@@ -640,7 +683,7 @@ function registerTools(server: McpServer, client: WorksectionClient) {
           params,
         });
         const costs = Array.isArray(response.data) ? response.data : [];
-        console.log(
+        console.error(
           `[get_costs] Successfully retrieved ${costs.length} cost entries`
         );
         return respond({ count: costs.length, costs });
@@ -758,6 +801,56 @@ function registerTools(server: McpServer, client: WorksectionClient) {
         return respond({ count: timers.length, timers });
       } catch (error) {
         return respondError(error, "get_timers");
+      }
+    }) as any
+  );
+
+  server.registerTool(
+    "search_tasks",
+    {
+      title: "Search tasks",
+      description:
+        "Searches for tasks based on various criteria. Requires at least one conditional parameter: projectId, taskId, emailUserFrom, emailUserTo, or filter. " +
+        "The filter parameter supports integer fields (id, project, parent) with operators (=, in) and string fields (name) with operators (=, has). " +
+        "Date fields (dateadd, datestart, dateend, dateclose) support operators (>, <, >=, <=, !=, =). " +
+        "Query conditions can be combined with parentheses and logical operators (and, or).",
+      inputSchema: searchTasksArgsSchemaBase.shape,
+      outputSchema: searchTasksOutputSchema.shape,
+    } as any,
+    (async (args: SearchTasksArgs) => {
+      try {
+        if (
+          !args.projectId &&
+          !args.taskId &&
+          !args.emailUserFrom &&
+          !args.emailUserTo &&
+          !args.filter
+        ) {
+          return respondError(
+            new Error(
+              "At least one conditional parameter is required: projectId, taskId, emailUserFrom, emailUserTo, or filter."
+            ),
+            "search_tasks"
+          );
+        }
+
+        const params: RequestParams = {};
+        if (args.projectId) params.id_project = args.projectId;
+        if (args.taskId) params.id_task = args.taskId;
+        if (args.emailUserFrom) params.email_user_from = args.emailUserFrom;
+        if (args.emailUserTo) params.email_user_to = args.emailUserTo;
+        if (args.filter) params.filter = args.filter;
+        if (args.status) params.status = args.status;
+        if (args.include?.length) params.extra = args.include.join(",");
+
+        const response = await client.call<{ data?: unknown[] }>(
+          "search_tasks",
+          { params }
+        );
+        const tasks = Array.isArray(response.data) ? response.data : [];
+        return respond({ count: tasks.length, tasks });
+      } catch (error) {
+        return respondError(error, "search_tasks");
       }
     }) as any
   );
@@ -916,7 +1009,7 @@ function createServer(config: WorksectionConfig) {
 async function startStdioServer(config: WorksectionConfig) {
   const server = createServer(config);
   const transport = new StdioServerTransport();
-  console.log("Starting Worksection MCP server in stdio mode...");
+  console.error("Starting Worksection MCP server in stdio mode...");
   await server.connect(transport);
 }
 
