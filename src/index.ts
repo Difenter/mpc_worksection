@@ -222,6 +222,17 @@ const getTaskTagGroupsOutputSchema = z.object({
   groups: z.array(recordAny),
 });
 
+const getProjectTagsArgsSchema = z.object({
+  group: z.string().optional(),
+  type: z.enum(["status", "label"]).optional(),
+  access: z.enum(["public", "private"]).optional(),
+});
+type GetProjectTagsArgs = z.infer<typeof getProjectTagsArgsSchema>;
+const getProjectTagsOutputSchema = z.object({
+  count: z.number(),
+  tags: z.array(recordAny),
+});
+
 const updateTaskTagsArgsSchema = z.object({
   taskId: z.string().min(1, "Task ID is required"),
   plus: z.array(z.string()).optional(),
@@ -674,6 +685,34 @@ function registerTools(server: McpServer, client: WorksectionClient) {
         return respond({ count: groups.length, groups });
       } catch (error) {
         return respondError(error, "get_task_tag_groups");
+      }
+    }) as any
+  );
+
+  server.registerTool(
+    "get_project_tags",
+    {
+      title: "List project tags",
+      description:
+        "Returns project tags of all or selected group, with optional type and visibility filters.",
+      inputSchema: getProjectTagsArgsSchema.shape,
+      outputSchema: getProjectTagsOutputSchema.shape,
+    } as any,
+    (async (args: GetProjectTagsArgs) => {
+      const params: RequestParams = {};
+      if (args.group) params.group = args.group;
+      if (args.type) params.type = args.type;
+      if (args.access) params.access = args.access;
+
+      try {
+        const response = await client.call<{ data?: unknown[] }>(
+          "get_project_tags",
+          { params }
+        );
+        const tags = Array.isArray(response.data) ? response.data : [];
+        return respond({ count: tags.length, tags });
+      } catch (error) {
+        return respondError(error, "get_project_tags");
       }
     }) as any
   );
