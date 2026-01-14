@@ -125,15 +125,7 @@ const listProjectTasksOutputSchema = z.object({
   tasks: z.array(recordAny),
 });
 
-const updateTaskTagsArgsSchema = z.object({
-  taskId: z.string().min(1, "Task ID is required"),
-  add: z.array(z.string()).optional(),
-  minus: z.array(z.string()).optional(),
-});
-type UpdateTaskTagsArgs = z.infer<typeof updateTaskTagsArgsSchema>;
-const updateTaskTagsOutputSchema = z.object({
-  status: z.string(),
-});
+
 
 const searchTasksArgsSchemaBase = z.object({
   projectId: z.coerce.string().optional(),
@@ -293,6 +285,49 @@ const updateTaskTagsArgsSchema = z.object({
 });
 type UpdateTaskTagsArgs = z.infer<typeof updateTaskTagsArgsSchema>;
 const updateTaskTagsOutputSchema = z.object({
+  status: z.string(),
+});
+
+const updateTaskArgsSchema = z.object({
+  taskId: z.string().min(1, "Task ID is required"),
+  title: z.string().optional(),
+  assigneeEmail: z.string().optional(),
+  priority: z.number().int().min(0).max(10).optional(),
+  startDate: z.string().optional(),
+  dueDate: z.string().optional(),
+  closedDate: z.string().optional(),
+  estimateHours: z.number().nonnegative().optional(),
+  budget: z.number().nonnegative().optional(),
+  tags: z.array(z.string()).optional(),
+});
+type UpdateTaskArgs = z.infer<typeof updateTaskArgsSchema>;
+const updateTaskOutputSchema = z.object({
+  task: recordAny,
+});
+
+const completeTaskArgsSchema = z.object({
+  taskId: z.string().min(1, "Task ID is required"),
+});
+type CompleteTaskArgs = z.infer<typeof completeTaskArgsSchema>;
+const completeTaskOutputSchema = z.object({
+  status: z.string(),
+});
+
+const addProjectMembersArgsSchema = z.object({
+  projectId: z.string().min(1, "Project ID is required"),
+  emails: z.array(z.string().email()).min(1, "At least one email is required"),
+});
+type AddProjectMembersArgs = z.infer<typeof addProjectMembersArgsSchema>;
+const addProjectMembersOutputSchema = z.object({
+  status: z.string(),
+});
+
+const deleteProjectMembersArgsSchema = z.object({
+  projectId: z.string().min(1, "Project ID is required"),
+  emails: z.array(z.string().email()).min(1, "At least one email is required"),
+});
+type DeleteProjectMembersArgs = z.infer<typeof deleteProjectMembersArgsSchema>;
+const deleteProjectMembersOutputSchema = z.object({
   status: z.string(),
 });
 
@@ -823,6 +858,122 @@ function registerTools(server: McpServer, client: WorksectionClient) {
         return respond({ status: response.status });
       } catch (error) {
         return respondError(error, "update_task_tags");
+      }
+    }) as any
+  );
+
+  server.registerTool(
+    "update_task",
+    {
+      title: "Update a Worksection task",
+      description:
+        "Calls update_task to modify an existing task's properties.",
+      inputSchema: updateTaskArgsSchema.shape,
+      outputSchema: updateTaskOutputSchema.shape,
+    } as any,
+    (async (args: UpdateTaskArgs) => {
+      try {
+        const params: RequestParams = {
+          id_task: args.taskId,
+          title: args.title,
+          email_user_to: args.assigneeEmail,
+          priority: args.priority,
+          datestart: formatWsDate(args.startDate),
+          dateend: formatWsDate(args.dueDate),
+          dateclosed: formatWsDate(args.closedDate),
+          max_time: args.estimateHours,
+          max_money: args.budget,
+          tags: commaSeparated(args.tags),
+        };
+
+        const response = await client.call<{ data?: Record<string, unknown> }>(
+          "update_task",
+          { params }
+        );
+
+        return respond({ task: response.data ?? {} });
+      } catch (error) {
+        return respondError(error, "update_task");
+      }
+    }) as any
+  );
+
+  server.registerTool(
+    "complete_task",
+    {
+      title: "Complete a Worksection task",
+      description: "Marks a task as completed.",
+      inputSchema: completeTaskArgsSchema.shape,
+      outputSchema: completeTaskOutputSchema.shape,
+    } as any,
+    (async (args: CompleteTaskArgs) => {
+      try {
+        const response = await client.call<{ status: string }>(
+          "complete_task",
+          {
+            method: "POST",
+            params: {
+              id_task: args.taskId,
+            },
+          }
+        );
+        return respond({ status: response.status });
+      } catch (error) {
+        return respondError(error, "complete_task");
+      }
+    }) as any
+  );
+
+  server.registerTool(
+    "add_project_members",
+    {
+      title: "Add project members",
+      description: "Adds account users to a selected project team.",
+      inputSchema: addProjectMembersArgsSchema.shape,
+      outputSchema: addProjectMembersOutputSchema.shape,
+    } as any,
+    (async (args: AddProjectMembersArgs) => {
+      try {
+        const response = await client.call<{ status: string }>(
+          "add_project_members",
+          {
+            method: "POST",
+            params: {
+              id_project: args.projectId,
+              members: args.emails.join(","),
+            },
+          }
+        );
+        return respond({ status: response.status });
+      } catch (error) {
+        return respondError(error, "add_project_members");
+      }
+    }) as any
+  );
+
+  server.registerTool(
+    "delete_project_members",
+    {
+      title: "Remove project members",
+      description: "Removes account users from a selected project team.",
+      inputSchema: deleteProjectMembersArgsSchema.shape,
+      outputSchema: deleteProjectMembersOutputSchema.shape,
+    } as any,
+    (async (args: DeleteProjectMembersArgs) => {
+      try {
+        const response = await client.call<{ status: string }>(
+          "delete_project_members",
+          {
+            method: "POST",
+            params: {
+              id_project: args.projectId,
+              members: args.emails.join(","),
+            },
+          }
+        );
+        return respond({ status: response.status });
+      } catch (error) {
+        return respondError(error, "delete_project_members");
       }
     }) as any
   );
