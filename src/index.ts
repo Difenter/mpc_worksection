@@ -244,6 +244,58 @@ const getCommentsOutputSchema = z.object({
   comments: z.array(recordAny),
 });
 
+const getTaskTagsArgsSchema = z.object({
+  group: z.string().optional(),
+  type: z.enum(["status", "label"]).optional(),
+  access: z.enum(["public", "private"]).optional(),
+});
+type GetTaskTagsArgs = z.infer<typeof getTaskTagsArgsSchema>;
+const getTaskTagsOutputSchema = z.object({
+  count: z.number(),
+  tags: z.array(recordAny),
+});
+
+const getTaskTagGroupsArgsSchema = z.object({
+  type: z.enum(["status", "label"]).optional(),
+  access: z.enum(["public", "private"]).optional(),
+});
+type GetTaskTagGroupsArgs = z.infer<typeof getTaskTagGroupsArgsSchema>;
+const getTaskTagGroupsOutputSchema = z.object({
+  count: z.number(),
+  groups: z.array(recordAny),
+});
+
+const getProjectTagsArgsSchema = z.object({
+  group: z.string().optional(),
+  type: z.enum(["status", "label"]).optional(),
+  access: z.enum(["public", "private"]).optional(),
+});
+type GetProjectTagsArgs = z.infer<typeof getProjectTagsArgsSchema>;
+const getProjectTagsOutputSchema = z.object({
+  count: z.number(),
+  tags: z.array(recordAny),
+});
+
+const getProjectTagGroupsArgsSchema = z.object({
+  type: z.enum(["status", "label"]).optional(),
+  access: z.enum(["public", "private"]).optional(),
+});
+type GetProjectTagGroupsArgs = z.infer<typeof getProjectTagGroupsArgsSchema>;
+const getProjectTagGroupsOutputSchema = z.object({
+  count: z.number(),
+  groups: z.array(recordAny),
+});
+
+const updateTaskTagsArgsSchema = z.object({
+  taskId: z.string().min(1, "Task ID is required"),
+  plus: z.array(z.string()).optional(),
+  minus: z.array(z.string()).optional(),
+});
+type UpdateTaskTagsArgs = z.infer<typeof updateTaskTagsArgsSchema>;
+const updateTaskTagsOutputSchema = z.object({
+  status: z.string(),
+});
+
 const getCostsArgsSchemaBase = z.object({
   projectId: z.coerce.string().optional(),
   taskId: z.coerce.string().optional(),
@@ -631,6 +683,146 @@ function registerTools(server: McpServer, client: WorksectionClient) {
         return respond({ taskId, count: comments.length, comments });
       } catch (error) {
         return respondError(error, "get_comments");
+      }
+    }) as any
+  );
+
+  server.registerTool(
+    "get_task_tags",
+    {
+      title: "List task tags",
+      description:
+        "Calls get_task_tags to fetch task tags of all or selected groups, with optional type and visibility filters.",
+      inputSchema: getTaskTagsArgsSchema.shape,
+      outputSchema: getTaskTagsOutputSchema.shape,
+    } as any,
+    (async (args: GetTaskTagsArgs) => {
+      const params: RequestParams = {};
+      if (args.group) params.group = args.group;
+      if (args.type) params.type = args.type;
+      if (args.access) params.access = args.access;
+
+      try {
+        const response = await client.call<{ data?: unknown[] }>(
+          "get_task_tags",
+          { params }
+        );
+        const tags = Array.isArray(response.data) ? response.data : [];
+        return respond({ count: tags.length, tags });
+      } catch (error) {
+        return respondError(error, "get_task_tags");
+      }
+    }) as any
+  );
+
+  server.registerTool(
+    "get_task_tag_groups",
+    {
+      title: "Get task tag groups",
+      description:
+        "Returns task tag groups with optional type and visibility filters.",
+      inputSchema: getTaskTagGroupsArgsSchema.shape,
+      outputSchema: getTaskTagGroupsOutputSchema.shape,
+    } as any,
+    (async (args: GetTaskTagGroupsArgs) => {
+      const params: RequestParams = {};
+      if (args.type) params.type = args.type;
+      if (args.access) params.access = args.access;
+
+      try {
+        const response = await client.call<{ data?: unknown[] }>(
+          "get_task_tag_groups",
+          { params }
+        );
+        const groups = Array.isArray(response.data) ? response.data : [];
+        return respond({ count: groups.length, groups });
+      } catch (error) {
+        return respondError(error, "get_task_tag_groups");
+      }
+    }) as any
+  );
+
+  server.registerTool(
+    "get_project_tags",
+    {
+      title: "List project tags",
+      description:
+        "Returns project tags of all or selected group, with optional type and visibility filters.",
+      inputSchema: getProjectTagsArgsSchema.shape,
+      outputSchema: getProjectTagsOutputSchema.shape,
+    } as any,
+    (async (args: GetProjectTagsArgs) => {
+      const params: RequestParams = {};
+      if (args.group) params.group = args.group;
+      if (args.type) params.type = args.type;
+      if (args.access) params.access = args.access;
+
+      try {
+        const response = await client.call<{ data?: unknown[] }>(
+          "get_project_tags",
+          { params }
+        );
+        const tags = Array.isArray(response.data) ? response.data : [];
+        return respond({ count: tags.length, tags });
+      } catch (error) {
+        return respondError(error, "get_project_tags");
+      }
+    }) as any
+  );
+
+  server.registerTool(
+    "get_project_tag_groups",
+    {
+      title: "Get project tag groups",
+      description:
+        "Returns project tag groups with optional type and visibility filters.",
+      inputSchema: getProjectTagGroupsArgsSchema.shape,
+      outputSchema: getProjectTagGroupsOutputSchema.shape,
+    } as any,
+    (async (args: GetProjectTagGroupsArgs) => {
+      const params: RequestParams = {};
+      if (args.type) params.type = args.type;
+      if (args.access) params.access = args.access;
+
+      try {
+        const response = await client.call<{ data?: unknown[] }>(
+          "get_project_tag_groups",
+          { params }
+        );
+        const groups = Array.isArray(response.data) ? response.data : [];
+        return respond({ count: groups.length, groups });
+      } catch (error) {
+        return respondError(error, "get_project_tag_groups");
+      }
+    }) as any
+  );
+
+  server.registerTool(
+    "update_task_tags",
+    {
+      title: "Update task tags",
+      description: "Sets new and removes previously set tags for selected task.",
+      inputSchema: updateTaskTagsArgsSchema.shape,
+      outputSchema: updateTaskTagsOutputSchema.shape,
+    } as any,
+    (async (args: UpdateTaskTagsArgs) => {
+      try {
+        const params: RequestParams = {
+          id_task: args.taskId,
+          plus: commaSeparated(args.plus),
+          minus: commaSeparated(args.minus),
+        };
+
+        const response = await client.call<{ status: string }>(
+          "update_task_tags",
+          {
+            method: "POST", // The docs say POST
+            params,
+          }
+        );
+        return respond({ status: response.status });
+      } catch (error) {
+        return respondError(error, "update_task_tags");
       }
     }) as any
   );
