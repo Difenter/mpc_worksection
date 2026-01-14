@@ -125,15 +125,7 @@ const listProjectTasksOutputSchema = z.object({
   tasks: z.array(recordAny),
 });
 
-const updateTaskTagsArgsSchema = z.object({
-  taskId: z.string().min(1, "Task ID is required"),
-  add: z.array(z.string()).optional(),
-  minus: z.array(z.string()).optional(),
-});
-type UpdateTaskTagsArgs = z.infer<typeof updateTaskTagsArgsSchema>;
-const updateTaskTagsOutputSchema = z.object({
-  status: z.string(),
-});
+
 
 const searchTasksArgsSchemaBase = z.object({
   projectId: z.coerce.string().optional(),
@@ -294,6 +286,23 @@ const updateTaskTagsArgsSchema = z.object({
 type UpdateTaskTagsArgs = z.infer<typeof updateTaskTagsArgsSchema>;
 const updateTaskTagsOutputSchema = z.object({
   status: z.string(),
+});
+
+const updateTaskArgsSchema = z.object({
+  taskId: z.string().min(1, "Task ID is required"),
+  title: z.string().optional(),
+  assigneeEmail: z.string().optional(),
+  priority: z.number().int().min(0).max(10).optional(),
+  startDate: z.string().optional(),
+  dueDate: z.string().optional(),
+  closedDate: z.string().optional(),
+  estimateHours: z.number().nonnegative().optional(),
+  budget: z.number().nonnegative().optional(),
+  tags: z.array(z.string()).optional(),
+});
+type UpdateTaskArgs = z.infer<typeof updateTaskArgsSchema>;
+const updateTaskOutputSchema = z.object({
+  task: recordAny,
 });
 
 const getCostsArgsSchemaBase = z.object({
@@ -823,6 +832,42 @@ function registerTools(server: McpServer, client: WorksectionClient) {
         return respond({ status: response.status });
       } catch (error) {
         return respondError(error, "update_task_tags");
+      }
+    }) as any
+  );
+
+  server.registerTool(
+    "update_task",
+    {
+      title: "Update a Worksection task",
+      description:
+        "Calls update_task to modify an existing task's properties.",
+      inputSchema: updateTaskArgsSchema.shape,
+      outputSchema: updateTaskOutputSchema.shape,
+    } as any,
+    (async (args: UpdateTaskArgs) => {
+      try {
+        const params: RequestParams = {
+          id_task: args.taskId,
+          title: args.title,
+          email_user_to: args.assigneeEmail,
+          priority: args.priority,
+          datestart: formatWsDate(args.startDate),
+          dateend: formatWsDate(args.dueDate),
+          dateclosed: formatWsDate(args.closedDate),
+          max_time: args.estimateHours,
+          max_money: args.budget,
+          tags: commaSeparated(args.tags),
+        };
+
+        const response = await client.call<{ data?: Record<string, unknown> }>(
+          "update_task",
+          { params }
+        );
+
+        return respond({ task: response.data ?? {} });
+      } catch (error) {
+        return respondError(error, "update_task");
       }
     }) as any
   );
