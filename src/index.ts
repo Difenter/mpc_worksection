@@ -313,6 +313,15 @@ const completeTaskOutputSchema = z.object({
   status: z.string(),
 });
 
+const addProjectMembersArgsSchema = z.object({
+  projectId: z.string().min(1, "Project ID is required"),
+  emails: z.array(z.string().email()).min(1, "At least one email is required"),
+});
+type AddProjectMembersArgs = z.infer<typeof addProjectMembersArgsSchema>;
+const addProjectMembersOutputSchema = z.object({
+  status: z.string(),
+});
+
 const getCostsArgsSchemaBase = z.object({
   projectId: z.coerce.string().optional(),
   taskId: z.coerce.string().optional(),
@@ -902,6 +911,33 @@ function registerTools(server: McpServer, client: WorksectionClient) {
         return respond({ status: response.status });
       } catch (error) {
         return respondError(error, "complete_task");
+      }
+    }) as any
+  );
+
+  server.registerTool(
+    "add_project_members",
+    {
+      title: "Add project members",
+      description: "Adds account users to a selected project team.",
+      inputSchema: addProjectMembersArgsSchema.shape,
+      outputSchema: addProjectMembersOutputSchema.shape,
+    } as any,
+    (async (args: AddProjectMembersArgs) => {
+      try {
+        const response = await client.call<{ status: string }>(
+          "add_project_members",
+          {
+            method: "POST",
+            params: {
+              id_project: args.projectId,
+              members: args.emails.join(","),
+            },
+          }
+        );
+        return respond({ status: response.status });
+      } catch (error) {
+        return respondError(error, "add_project_members");
       }
     }) as any
   );
