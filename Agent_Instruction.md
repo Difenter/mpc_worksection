@@ -407,9 +407,82 @@ User: "Show me tasks in the Marketing project"
 
 ---
 
+---
+
+#### 10. `get_task_tags`
+
+**Purpose**: Retrieve a list of task tags from Worksection, optionally filtered by group, type, or access.
+
+**Parameters**:
+
+- `group` (optional): Tag group name or ID (string)
+  - Example: `"Общий процесс"` or `"100"`
+- `type` (optional): Tag type (string)
+  - `"status"`: Workflow/status tags
+  - `"label"`: Informational labels
+- `access` (optional): Tag visibility (string)
+  - `"public"` or `"private"`
+
+**Returns**:
+
+- `count`: Number of tags returned
+- `tags`: Array of tag objects with ID, title, and group details
+
+**When to use**:
+
+- To get available status values for tasks
+- To list labels for task classification
+- To resolve exact tag names or IDs before updating
+- To map user intent (e.g., "set status to In Review") to real tags
+
+**Example**:
+
+```json
+{
+  "group": "Общий процесс",
+  "type": "status"
+}
+```
+
+---
+
+#### 11. `get_task_tag_groups`
+
+**Purpose**: Retrieve all task tag groups (categories of tags).
+
+**Parameters**:
+
+- `type` (optional): Tag group type (string)
+  - `"status"`: Workflow/status groups
+  - `"label"`: Label groups
+- `access` (optional): Group visibility (string)
+  - `"public"` or `"private"`
+
+**Returns**:
+
+- `count`: Number of groups
+- `groups`: Array of tag group objects
+
+**When to use**:
+
+- To discover available ID/names for tag groups
+- To understand task classification structure
+- To get group IDs for filtering tags
+
+**Example**:
+
+```json
+{
+  "type": "label",
+  "access": "public"
+}
+```
+
+---
+
 ### WRITE Operations
 
-#### 10. `post_task`
+#### 12. `post_task`
 
 **Purpose**: Create a new task or subtask in a project.
 
@@ -473,7 +546,7 @@ User: "Show me tasks in the Marketing project"
 
 ---
 
-#### 11. `post_comment`
+#### 13. `post_comment`
 
 **Purpose**: Add a comment or checklist to an existing task.
 
@@ -506,6 +579,175 @@ User: "Show me tasks in the Marketing project"
   "taskId": "67890",
   "text": "Started working on this task. Will complete by Friday.",
   "mentionEmails": ["manager@example.com"]
+}
+```
+
+---
+
+#### 14. `update_task_tags`
+
+**Purpose**: Update task tags by adding new tags and/or removing existing ones. This is the primary method for changing task status.
+
+**Parameters**:
+
+- `taskId` (required): The task ID to update (string)
+- `plus` (optional): Array of tags to add (array of strings)
+  - Can be tag names or IDs
+- `minus` (optional): Array of tags to remove (array of strings)
+  - Can be tag names or IDs
+
+**Returns**:
+
+- `status`: Confirmation string (e.g., "ok")
+
+**When to use**:
+
+- To change task status (remove old status tag, add new one)
+- To add or remove labels (e.g., "Bug", "Urgent")
+- To update task metadata workflow state
+
+**Example - Change Status**:
+
+```json
+{
+  "taskId": "67890",
+  "plus": ["In Progress"],
+  "minus": ["To Do"]
+}
+```
+
+**Example - Add Labels**:
+
+```json
+{
+  "taskId": "67890",
+  "plus": ["Bug", "Critical"]
+}
+```
+
+---
+
+#### 15. `update_task`
+
+**Purpose**: Modify an existing task's properties.
+
+**Parameters**:
+
+- `taskId` (required): The task ID to update (string)
+- `title` (optional): New task title (string)
+- `priority` (optional): New priority level (0-10) (integer)
+- `assigneeEmail` (optional): New assignee email (string)
+  - **Verify user exists first**
+- `startDate` (optional): New start date (ISO or DD.MM.YYYY)
+- `dueDate` (optional): New due date (ISO or DD.MM.YYYY)
+- `closedDate` (optional): Date task was closed (ISO or DD.MM.YYYY)
+- `estimateHours` (optional): New estimated hours (number)
+- `budget` (optional): New budget (number)
+- `tags` (optional): Comma-separated tags (string, overwrites existing tags)
+  - **Note**: This overwrites ALL tags. Use `update_task_tags` for additive changes.
+
+**Returns**:
+
+- `task`: Updated task object
+
+**When to use**:
+
+- To rename a task
+- To change dates, priority, or assignee
+- To update estimates
+
+**Example**:
+
+```json
+{
+  "taskId": "67890",
+  "title": "Updated Task Title",
+  "priority": 10
+}
+```
+
+---
+
+#### 16. `complete_task`
+
+**Purpose**: Mark a task as completed.
+
+**Parameters**:
+
+- `taskId` (required): The task ID to complete (string)
+
+**Returns**:
+
+- `status`: Confirmation status
+
+**When to use**:
+
+- To finish a task
+- To close a task
+
+**Example**:
+
+```json
+{
+  "taskId": "67890"
+}
+```
+
+---
+
+#### 17. `add_project_members`
+
+**Purpose**: Add users to a project team.
+
+**Parameters**:
+
+- `projectId` (required): Project ID (string)
+- `emails` (required): Array of user emails to add (array of strings)
+
+**Returns**:
+
+- `status`: Confirmation status
+
+**When to use**:
+
+- To grant users access to a project
+- To onboard team members
+
+**Example**:
+
+```json
+{
+  "projectId": "12345",
+  "emails": ["user1@example.com", "user2@example.com"]
+}
+```
+
+---
+
+#### 18. `delete_project_members`
+
+**Purpose**: Remove users from a project team.
+
+**Parameters**:
+
+- `projectId` (required): Project ID (string)
+- `emails` (required): Array of user emails to remove (array of strings)
+
+**Returns**:
+
+- `status`: Confirmation status
+
+**When to use**:
+
+- To revoke access from a project
+- To remove team members
+
+**Example**:
+
+```json
+{
+  "projectId": "12345",
+  "emails": ["user1@example.com"]
 }
 ```
 
@@ -709,6 +951,12 @@ Step 2: Execute Operation
 1. Get task: `get_task(taskId, include)`
 2. Get comments: `get_comments(taskId, include)`
 3. Add comment: `post_comment(taskId, text, ...)`
+4. Update task: `update_task(taskId, ...)`
+5. Complete task: `complete_task(taskId)`
+6. Get tags: `get_task_tags(group, type, access)`
+7. Get tag groups: `get_task_tag_groups(type, access)`
+8. Update tags: `update_task_tags(taskId, plus, minus)`
+
 
 **Cost Operations:**
 
@@ -719,6 +967,8 @@ Step 2: Execute Operation
 
 1. List users: `get_users()`
 2. Get timers: `get_timers()`
+3. Add members: `add_project_members(projectId, emails)`
+4. Remove members: `delete_project_members(projectId, emails)`
 
 ---
 
