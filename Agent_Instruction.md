@@ -282,7 +282,7 @@ User: "Show me tasks in the Marketing project"
   - `true`: Only running/active timers
   - `false`: Only completed time entries
 - `filter` (optional): Advanced Worksection filter syntax (string)
-  - **⚠️ LIMITATIONS: User-related filters (user, user_id, user.email, uid) are NOT supported in the filter parameter**
+  - **LIMITATIONS: User-related filters (user, user_id, user.email, uid) are NOT supported in the filter parameter**
   - **Supported fields**: `id` (INT), `project` (INT), `task` (INT), `comment` (STRING), `dateadd` (DATE)
   - **Supported operators**:
     - Integer fields: `=`, `in` (e.g., `project=2456`, `id in (123, 456)`)
@@ -292,7 +292,7 @@ User: "Show me tasks in the Marketing project"
   - **Use lowercase `and`/`or` operators**
   - **Date format in filter**: Must use `DD.MM.YYYY` format (e.g., `dateadd>'01.05.2024'`)
 
-**⚠️ IMPORTANT - Filter Limitations**:
+**IMPORTANT - Filter Limitations**:
 
 - **User filtering does NOT work**: The Worksection API does not support filtering by user-related fields (`user`, `user_id`, `user.email`, `uid`) in the `filter` parameter for `get_costs`
 - **Workaround for user filtering**:
@@ -332,7 +332,7 @@ User: "Show me tasks in the Marketing project"
 }
 ```
 
-**❌ DO NOT USE - User filtering in filter (will fail)**:
+**WRONG: DO NOT USE - User filtering in filter (will fail)**:
 
 ```json
 {
@@ -407,9 +407,82 @@ User: "Show me tasks in the Marketing project"
 
 ---
 
+---
+
+#### 10. `get_task_tags`
+
+**Purpose**: Retrieve a list of task tags from Worksection, optionally filtered by group, type, or access.
+
+**Parameters**:
+
+- `group` (optional): Tag group name or ID (string)
+  - Example: `"Общий процесс"` or `"100"`
+- `type` (optional): Tag type (string)
+  - `"status"`: Workflow/status tags
+  - `"label"`: Informational labels
+- `access` (optional): Tag visibility (string)
+  - `"public"` or `"private"`
+
+**Returns**:
+
+- `count`: Number of tags returned
+- `tags`: Array of tag objects with ID, title, and group details
+
+**When to use**:
+
+- To get available status values for tasks
+- To list labels for task classification
+- To resolve exact tag names or IDs before updating
+- To map user intent (e.g., "set status to In Review") to real tags
+
+**Example**:
+
+```json
+{
+  "group": "Общий процесс",
+  "type": "status"
+}
+```
+
+---
+
+#### 11. `get_task_tag_groups`
+
+**Purpose**: Retrieve all task tag groups (categories of tags).
+
+**Parameters**:
+
+- `type` (optional): Tag group type (string)
+  - `"status"`: Workflow/status groups
+  - `"label"`: Label groups
+- `access` (optional): Group visibility (string)
+  - `"public"` or `"private"`
+
+**Returns**:
+
+- `count`: Number of groups
+- `groups`: Array of tag group objects
+
+**When to use**:
+
+- To discover available ID/names for tag groups
+- To understand task classification structure
+- To get group IDs for filtering tags
+
+**Example**:
+
+```json
+{
+  "type": "label",
+  "access": "public"
+}
+```
+
+---
+
 ### WRITE Operations
 
-#### 10. `post_task`
+#### 12. `post_task`
 
 **Purpose**: Create a new task or subtask in a project.
 
@@ -473,7 +546,7 @@ User: "Show me tasks in the Marketing project"
 
 ---
 
-#### 11. `post_comment`
+#### 13. `post_comment`
 
 **Purpose**: Add a comment or checklist to an existing task.
 
@@ -506,6 +579,175 @@ User: "Show me tasks in the Marketing project"
   "taskId": "67890",
   "text": "Started working on this task. Will complete by Friday.",
   "mentionEmails": ["manager@example.com"]
+}
+```
+
+---
+
+#### 14. `update_task_tags`
+
+**Purpose**: Update task tags by adding new tags and/or removing existing ones. This is the primary method for changing task status.
+
+**Parameters**:
+
+- `taskId` (required): The task ID to update (string)
+- `plus` (optional): Array of tags to add (array of strings)
+  - Can be tag names or IDs
+- `minus` (optional): Array of tags to remove (array of strings)
+  - Can be tag names or IDs
+
+**Returns**:
+
+- `status`: Confirmation string (e.g., "ok")
+
+**When to use**:
+
+- To change task status (remove old status tag, add new one)
+- To add or remove labels (e.g., "Bug", "Urgent")
+- To update task metadata workflow state
+
+**Example - Change Status**:
+
+```json
+{
+  "taskId": "67890",
+  "plus": ["In Progress"],
+  "minus": ["To Do"]
+}
+```
+
+**Example - Add Labels**:
+
+```json
+{
+  "taskId": "67890",
+  "plus": ["Bug", "Critical"]
+}
+```
+
+---
+
+#### 15. `update_task`
+
+**Purpose**: Modify an existing task's properties.
+
+**Parameters**:
+
+- `taskId` (required): The task ID to update (string)
+- `title` (optional): New task title (string)
+- `priority` (optional): New priority level (0-10) (integer)
+- `assigneeEmail` (optional): New assignee email (string)
+  - **Verify user exists first**
+- `startDate` (optional): New start date (ISO or DD.MM.YYYY)
+- `dueDate` (optional): New due date (ISO or DD.MM.YYYY)
+- `closedDate` (optional): Date task was closed (ISO or DD.MM.YYYY)
+- `estimateHours` (optional): New estimated hours (number)
+- `budget` (optional): New budget (number)
+- `tags` (optional): Comma-separated tags (string, overwrites existing tags)
+  - **Note**: This overwrites ALL tags. Use `update_task_tags` for additive changes.
+
+**Returns**:
+
+- `task`: Updated task object
+
+**When to use**:
+
+- To rename a task
+- To change dates, priority, or assignee
+- To update estimates
+
+**Example**:
+
+```json
+{
+  "taskId": "67890",
+  "title": "Updated Task Title",
+  "priority": 10
+}
+```
+
+---
+
+#### 16. `complete_task`
+
+**Purpose**: Mark a task as completed.
+
+**Parameters**:
+
+- `taskId` (required): The task ID to complete (string)
+
+**Returns**:
+
+- `status`: Confirmation status
+
+**When to use**:
+
+- To finish a task
+- To close a task
+
+**Example**:
+
+```json
+{
+  "taskId": "67890"
+}
+```
+
+---
+
+#### 17. `add_project_members`
+
+**Purpose**: Add users to a project team.
+
+**Parameters**:
+
+- `projectId` (required): Project ID (string)
+- `emails` (required): Array of user emails to add (array of strings)
+
+**Returns**:
+
+- `status`: Confirmation status
+
+**When to use**:
+
+- To grant users access to a project
+- To onboard team members
+
+**Example**:
+
+```json
+{
+  "projectId": "12345",
+  "emails": ["user1@example.com", "user2@example.com"]
+}
+```
+
+---
+
+#### 18. `delete_project_members`
+
+**Purpose**: Remove users from a project team.
+
+**Parameters**:
+
+- `projectId` (required): Project ID (string)
+- `emails` (required): Array of user emails to remove (array of strings)
+
+**Returns**:
+
+- `status`: Confirmation status
+
+**When to use**:
+
+- To revoke access from a project
+- To remove team members
+
+**Example**:
+
+```json
+{
+  "projectId": "12345",
+  "emails": ["user1@example.com"]
 }
 ```
 
@@ -547,10 +789,10 @@ Step 2: Execute Operation
 
 **Examples:**
 
-- ✅ "Create a task" → Proceed with `post_task`
-- ✅ "Add a comment" → Proceed with `post_comment`
-- ❌ "Show me tasks" → Use `get_tasks` (read only)
-- ❓ "Update the task" → Ask: "Do you want me to add a comment or modify the task?"
+- Correct "Create a task" → Proceed with `post_task`
+- Correct "Add a comment" → Proceed with `post_comment`
+- Failure "Show me tasks" → Use `get_tasks` (read only)
+- Ambiguous "Update the task" → Ask: "Do you want me to add a comment or modify the task?"
 
 ---
 
@@ -626,7 +868,7 @@ Step 2: Execute Operation
 - **Always prefer using projectId from project-first step**
 - This prevents unbounded queries that may exceed memory limits
 
-**⚠️ CRITICAL - Filter Parameter Limitations:**
+**CRITICAL - Filter Parameter Limitations:**
 
 - **User-related filters DO NOT WORK**: The `filter` parameter in `get_costs` does NOT support user-related fields (`user`, `user_id`, `user.email`, `uid`)
 - **If you need to filter by user**:
@@ -709,6 +951,12 @@ Step 2: Execute Operation
 1. Get task: `get_task(taskId, include)`
 2. Get comments: `get_comments(taskId, include)`
 3. Add comment: `post_comment(taskId, text, ...)`
+4. Update task: `update_task(taskId, ...)`
+5. Complete task: `complete_task(taskId)`
+6. Get tags: `get_task_tags(group, type, access)`
+7. Get tag groups: `get_task_tag_groups(type, access)`
+8. Update tags: `update_task_tags(taskId, plus, minus)`
+
 
 **Cost Operations:**
 
@@ -719,6 +967,8 @@ Step 2: Execute Operation
 
 1. List users: `get_users()`
 2. Get timers: `get_timers()`
+3. Add members: `add_project_members(projectId, emails)`
+4. Remove members: `delete_project_members(projectId, emails)`
 
 ---
 
@@ -739,13 +989,13 @@ Step 2: Execute Operation
 3. **Example**:
 
    ```json
-   // ❌ WRONG - Will fail with "Field is required"
+   // WRONG - Will fail with "Field is required"
    {
      "projectId": "12345",
      "filter": "user=675470"
    }
 
-   // ✅ CORRECT - Get all costs, then filter by user in code
+   // CORRECT - Get all costs, then filter by user in code
    {
      "projectId": "12345",
      "startDate": "2024-01-01",
@@ -765,6 +1015,62 @@ Step 2: Execute Operation
 3. The API key has proper admin permissions
 
 **Note**: `get_users` does NOT require any parameters and should work with an empty arguments object.
+
+---
+
+## Common Tag Groups Reference
+
+### 1. General Process / Status (Group ID: 100)
+
+**Group Name**: "Общий процесс"
+**Use for**: Task workflow status updates.
+
+| Tag Title | ID | Description |
+| :--- | :--- | :--- |
+| **Activities** | `2545825` | General activities |
+| **To Do** | `2420239` | Ready to be worked on |
+| **In Progress** | `2420244` | Working on it |
+| **In Review** | `2420249` | Finished, pending review |
+| **Ready for Testing on Dev** | `2786902` | Deployed to Dev |
+| **Ready for Testing Staging** | `2776995` | Deployed to Staging |
+| **Ready for Deploy** | `2777000` | Approved for Production |
+| **Done** | `2420254` | Completed |
+
+### 2. Task Points / Complexity (Group ID: 107)
+
+**Group Name**: "Поинт задачи"
+**Use for**: Estimating task complexity or size.
+
+| Tag Title | ID | Note |
+| :--- | :--- | :--- |
+| **XS** | `2805646` | Extra Small |
+| **S** | `2805650` | Small |
+| **M** | `2805654` | Medium |
+| **ML** | `2805658` | Medium-Large |
+| **L** | `2805662` | Large |
+| **XL** | `2805666` | Extra Large |
+| **Легкая** | `2429670` | Easy |
+| **Умеренная** | `2429665` | Moderate |
+| **Средней сложности** | `2429660` | Medium difficulty |
+| **Сложная** | `2429655` | Hard |
+
+### 3. Project Management Types (Group ID: 111)
+
+**Group Name**: "Project Management"
+**Use for**: Classifying task types, bugs, and issues.
+
+| Tag Title | ID | Type |
+| :--- | :--- | :--- |
+| **Feature** | `2788562` | New functionality |
+| **Improvement** | `2784607` | Enhancement to existing feature |
+| **Bug** | `2549555` | General defect |
+| **Staging Bug** | `2803738` | Defect found on Staging |
+| **Production Bug** | `2803742` | Defect found in Production |
+| **Regression issue** | `2813763` | Recreated bug |
+| **Blocker** | `2598345` | Blocks progress |
+| **Change request** | `2598215` | Request for change |
+| **Infrastructure** | `2803058` | DevOps/Infra task |
+| **Documentation** | `2808134` | Docs related |
 
 ---
 
