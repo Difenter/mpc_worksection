@@ -1018,6 +1018,62 @@ Step 2: Execute Operation
 
 ---
 
+## Common Tag Groups Reference
+
+### 1. General Process / Status (Group ID: 100)
+
+**Group Name**: "Общий процесс"
+**Use for**: Task workflow status updates.
+
+| Tag Title | ID | Description |
+| :--- | :--- | :--- |
+| **Activities** | `2545825` | General activities |
+| **To Do** | `2420239` | Ready to be worked on |
+| **In Progress** | `2420244` | Working on it |
+| **In Review** | `2420249` | Finished, pending review |
+| **Ready for Testing on Dev** | `2786902` | Deployed to Dev |
+| **Ready for Testing Staging** | `2776995` | Deployed to Staging |
+| **Ready for Deploy** | `2777000` | Approved for Production |
+| **Done** | `2420254` | Completed |
+
+### 2. Task Points / Complexity (Group ID: 107)
+
+**Group Name**: "Поинт задачи"
+**Use for**: Estimating task complexity or size.
+
+| Tag Title | ID | Note |
+| :--- | :--- | :--- |
+| **XS** | `2805646` | Extra Small |
+| **S** | `2805650` | Small |
+| **M** | `2805654` | Medium |
+| **ML** | `2805658` | Medium-Large |
+| **L** | `2805662` | Large |
+| **XL** | `2805666` | Extra Large |
+| **Легкая** | `2429670` | Easy |
+| **Умеренная** | `2429665` | Moderate |
+| **Средней сложности** | `2429660` | Medium difficulty |
+| **Сложная** | `2429655` | Hard |
+
+### 3. Project Management Types (Group ID: 111)
+
+**Group Name**: "Project Management"
+**Use for**: Classifying task types, bugs, and issues.
+
+| Tag Title | ID | Type |
+| :--- | :--- | :--- |
+| **Feature** | `2788562` | New functionality |
+| **Improvement** | `2784607` | Enhancement to existing feature |
+| **Bug** | `2549555` | General defect |
+| **Staging Bug** | `2803738` | Defect found on Staging |
+| **Production Bug** | `2803742` | Defect found in Production |
+| **Regression issue** | `2813763` | Recreated bug |
+| **Blocker** | `2598345` | Blocks progress |
+| **Change request** | `2598215` | Request for change |
+| **Infrastructure** | `2803058` | DevOps/Infra task |
+| **Documentation** | `2808134` | Docs related |
+
+---
+
 ## Summary Checklist
 
 Before executing any operation, verify:
