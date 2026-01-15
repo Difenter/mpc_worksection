@@ -282,7 +282,7 @@ User: "Show me tasks in the Marketing project"
   - `true`: Only running/active timers
   - `false`: Only completed time entries
 - `filter` (optional): Advanced Worksection filter syntax (string)
-  - **⚠️ LIMITATIONS: User-related filters (user, user_id, user.email, uid) are NOT supported in the filter parameter**
+  - **LIMITATIONS: User-related filters (user, user_id, user.email, uid) are NOT supported in the filter parameter**
   - **Supported fields**: `id` (INT), `project` (INT), `task` (INT), `comment` (STRING), `dateadd` (DATE)
   - **Supported operators**:
     - Integer fields: `=`, `in` (e.g., `project=2456`, `id in (123, 456)`)
@@ -292,7 +292,7 @@ User: "Show me tasks in the Marketing project"
   - **Use lowercase `and`/`or` operators**
   - **Date format in filter**: Must use `DD.MM.YYYY` format (e.g., `dateadd>'01.05.2024'`)
 
-**⚠️ IMPORTANT - Filter Limitations**:
+**IMPORTANT - Filter Limitations**:
 
 - **User filtering does NOT work**: The Worksection API does not support filtering by user-related fields (`user`, `user_id`, `user.email`, `uid`) in the `filter` parameter for `get_costs`
 - **Workaround for user filtering**:
@@ -332,7 +332,7 @@ User: "Show me tasks in the Marketing project"
 }
 ```
 
-**❌ DO NOT USE - User filtering in filter (will fail)**:
+**WRONG: DO NOT USE - User filtering in filter (will fail)**:
 
 ```json
 {
@@ -789,10 +789,10 @@ Step 2: Execute Operation
 
 **Examples:**
 
-- ✅ "Create a task" → Proceed with `post_task`
-- ✅ "Add a comment" → Proceed with `post_comment`
-- ❌ "Show me tasks" → Use `get_tasks` (read only)
-- ❓ "Update the task" → Ask: "Do you want me to add a comment or modify the task?"
+- Correct "Create a task" → Proceed with `post_task`
+- Correct "Add a comment" → Proceed with `post_comment`
+- Failure "Show me tasks" → Use `get_tasks` (read only)
+- Ambiguous "Update the task" → Ask: "Do you want me to add a comment or modify the task?"
 
 ---
 
@@ -868,7 +868,7 @@ Step 2: Execute Operation
 - **Always prefer using projectId from project-first step**
 - This prevents unbounded queries that may exceed memory limits
 
-**⚠️ CRITICAL - Filter Parameter Limitations:**
+**CRITICAL - Filter Parameter Limitations:**
 
 - **User-related filters DO NOT WORK**: The `filter` parameter in `get_costs` does NOT support user-related fields (`user`, `user_id`, `user.email`, `uid`)
 - **If you need to filter by user**:
@@ -989,13 +989,13 @@ Step 2: Execute Operation
 3. **Example**:
 
    ```json
-   // ❌ WRONG - Will fail with "Field is required"
+   // WRONG - Will fail with "Field is required"
    {
      "projectId": "12345",
      "filter": "user=675470"
    }
 
-   // ✅ CORRECT - Get all costs, then filter by user in code
+   // CORRECT - Get all costs, then filter by user in code
    {
      "projectId": "12345",
      "startDate": "2024-01-01",
