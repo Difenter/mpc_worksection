@@ -26,7 +26,7 @@ const taskExtras = [
   "subscribers",
 ] as const;
 const commentExtras = ["files"] as const;
-const costTotalsExtras = ["projects"] as const;
+const costTotalsExtras = ["projects", "users"] as const;
 
 type ProjectExtra = (typeof projectExtras)[number];
 type TaskExtra = (typeof taskExtras)[number];
@@ -83,6 +83,25 @@ const formatWsDate = (raw?: string) => {
   return trimmed;
 };
 
+function parseWsTimeToMinutes(value: unknown): number {
+  if (typeof value !== "string") return 0;
+  const trimmed = value.trim();
+  if (!trimmed) return 0;
+  const match = trimmed.match(/^(\d+):(\d{1,2})$/);
+  if (!match) return 0;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return 0;
+  return hours * 60 + minutes;
+}
+
+function minutesToWsTime(minutes: number): string {
+  const safe = Number.isFinite(minutes) ? Math.max(0, Math.trunc(minutes)) : 0;
+  const h = Math.floor(safe / 60);
+  const m = safe % 60;
+  return `${h}:${String(m).padStart(2, "0")}`;
+}
+
 const recordAny = z.record(z.string(), z.any());
 
 const emptyArgsSchema = z.object({});
@@ -124,8 +143,6 @@ const listProjectTasksOutputSchema = z.object({
   count: z.number(),
   tasks: z.array(recordAny),
 });
-
-
 
 const searchTasksArgsSchemaBase = z.object({
   projectId: z.coerce.string().optional(),
@@ -361,9 +378,43 @@ const getCostsOutputSchema = z.object({
   costs: z.array(recordAny),
 });
 
+const getCostsAggregatedArgsSchemaBase = z.object({
+  groupBy: z.enum(["project", "task", "user"]),
+  projectId: z.coerce.string().optional(),
+  taskId: z.coerce.string().optional(),
+  userId: z.coerce.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  isTimer: z.boolean().optional(),
+});
+const getCostsAggregatedArgsSchema = getCostsAggregatedArgsSchemaBase.refine(
+  (data) => {
+    return Boolean(
+      data.projectId ||
+        data.taskId ||
+        data.userId ||
+        data.groupBy ||
+        data.startDate ||
+        data.endDate ||
+        data.isTimer
+    );
+  },
+  {
+    message:
+      "At least one filter parameter is required (projectId, taskId, userId, startDate, endDate, or filter) to prevent unbounded queries.",
+    path: ["projectId"],
+  }
+);
+type GetCostsAggregatedArgs = z.infer<typeof getCostsAggregatedArgsSchema>;
+const getCostsAggregatedOutputSchema = z.object({
+  count: z.number(),
+  costs: z.array(recordAny),
+});
+
 const getCostsTotalArgsSchemaBase = z.object({
   projectId: z.coerce.string().optional(),
   taskId: z.coerce.string().optional(),
+  userId: z.coerce.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   isTimer: z.boolean().optional(),
@@ -375,6 +426,7 @@ const getCostsTotalArgsSchema = getCostsTotalArgsSchemaBase.refine(
     return Boolean(
       data.projectId ||
         data.taskId ||
+        data.userId ||
         data.startDate ||
         data.endDate ||
         data.filter
@@ -382,7 +434,7 @@ const getCostsTotalArgsSchema = getCostsTotalArgsSchemaBase.refine(
   },
   {
     message:
-      "At least one filter parameter is required (projectId, taskId, startDate, endDate, or filter) to prevent unbounded queries.",
+      "At least one filter parameter is required (projectId, taskId, userId, startDate, endDate, or filter) to prevent unbounded queries.",
     path: ["projectId"],
   }
 );
@@ -437,7 +489,9 @@ function registerTools(server: McpServer, client: WorksectionClient) {
         console.error("[get_users] Calling Worksection API...");
         const response = await client.call<{ data?: unknown[] }>("get_users");
         const users = Array.isArray(response.data) ? response.data : [];
-        console.error(`[get_users] Successfully retrieved ${users.length} users`);
+        console.error(
+          `[get_users] Successfully retrieved ${users.length} users`
+        );
         return respond({ count: users.length, users });
       } catch (error) {
         console.error("[get_users] Error occurred:", error);
@@ -836,7 +890,8 @@ function registerTools(server: McpServer, client: WorksectionClient) {
     "update_task_tags",
     {
       title: "Update task tags",
-      description: "Sets new and removes previously set tags for selected task.",
+      description:
+        "Sets new and removes previously set tags for selected task.",
       inputSchema: updateTaskTagsArgsSchema.shape,
       outputSchema: updateTaskTagsOutputSchema.shape,
     } as any,
@@ -866,8 +921,7 @@ function registerTools(server: McpServer, client: WorksectionClient) {
     "update_task",
     {
       title: "Update a Worksection task",
-      description:
-        "Calls update_task to modify an existing task's properties.",
+      description: "Calls update_task to modify an existing task's properties.",
       inputSchema: updateTaskArgsSchema.shape,
       outputSchema: updateTaskOutputSchema.shape,
     } as any,
@@ -999,6 +1053,7 @@ function registerTools(server: McpServer, client: WorksectionClient) {
           !args.taskId &&
           !args.startDate &&
           !args.endDate &&
+          !args.isTimer &&
           !args.filter
         ) {
           return respondError(
@@ -1030,13 +1085,7 @@ function registerTools(server: McpServer, client: WorksectionClient) {
           `[get_costs] Successfully retrieved ${costs.length} cost entries`
         );
 
-        const test = costs.map((cost) => {
-          return {
-            ...(cost as Record<string, any>),
-            timeMinutes: parseInt((cost as Record<string, any>).time.split(':')[0]) * 60 + parseInt((cost as Record<string, any>).time.split(':')[1]),
-          };
-        });
-        return respond({ data: test });
+        return respond({ count: costs.length, costs });
       } catch (error) {
         console.error(`[get_costs] Error:`, error);
         // If the error mentions filter format, provide additional guidance
@@ -1049,6 +1098,188 @@ function registerTools(server: McpServer, client: WorksectionClient) {
           return respondError(enhancedError, "get_costs");
         }
         return respondError(error, "get_costs");
+      }
+    }) as any
+  );
+
+  server.registerTool(
+    "get_costs_aggregated",
+    {
+      title: "List task/project costs",
+      description:
+        "Calls get_costs_aggregated to fetch logged time/money entries. Requires at least one filter parameter (projectId, taskId, userId, groupBy,  startDate, endDate, or isTimer) to prevent unbounded queries. " +
+        "Supported groupBy values: user, task, project. " +
+        "Examples: 'groupBy=user', 'taskId=123456', 'startDate=01.05.2021', 'endDate=01.01.2026', 'isTimer=true','userId=123456', 'projectId=2456'.",
+      inputSchema: getCostsAggregatedArgsSchemaBase.shape,
+      outputSchema: getCostsAggregatedOutputSchema.shape,
+    } as any,
+    (async (args: GetCostsAggregatedArgs) => {
+      try {
+        // Validate that at least one filter is provided (schema should catch this, but double-check for safety)
+        if (
+          !args.projectId &&
+          !args.taskId &&
+          !args.userId &&
+          !args.groupBy &&
+          !args.startDate &&
+          !args.endDate &&
+          !args.isTimer
+        ) {
+          return respondError(
+            new Error(
+              "At least one filter parameter is required (projectId, taskId, userId, groupBy, startDate, endDate, or isTimer) to prevent unbounded queries that may exceed memory limits."
+            ),
+            "get_costs_aggregated"
+          );
+        }
+
+        const params: RequestParams = {};
+        if (args.projectId) params.id_project = args.projectId;
+        if (args.taskId) params.id_task = args.taskId;
+        if (args.startDate) params.datestart = formatWsDate(args.startDate);
+        if (args.endDate) params.dateend = formatWsDate(args.endDate);
+        if (typeof args.isTimer === "boolean")
+          params.is_timer = args.isTimer ? 1 : 0;
+
+        console.error(
+          `[get_costs_aggregated] Calling with params:`,
+          JSON.stringify(params, null, 2)
+        );
+        const response = await client.call<{ data?: unknown[] }>("get_costs", {
+          params,
+        });
+        let costs = Array.isArray(response.data) ? response.data : [];
+        console.error(
+          `[get_costs_aggregated] Successfully retrieved ${costs.length} cost entries`
+        );
+
+        if (args?.userId) {
+          costs = costs.filter(
+            (cost: unknown) =>
+              (cost as Record<string, any>).user_from?.id === args.userId
+          );
+        }
+
+        // return respond({ count: costs.length, costs });
+
+        function timeToMinutes(timeStr: string) {
+          if (typeof timeStr !== "string" || !timeStr.includes(":")) {
+            throw new Error(`Invalid time format: ${timeStr}`);
+          }
+
+          const [h, m] = timeStr.split(":").map(Number);
+
+          if (!h || !m) {
+            throw new Error(`Invalid time values: ${timeStr}`);
+          }
+
+          if (!Number.isInteger(h) || !Number.isInteger(m)) {
+            throw new Error(`Invalid time values: ${timeStr}`);
+          }
+
+          return h * 60 + m;
+        }
+
+        function minutesToTime(totalMinutes: number) {
+          const hours = Math.floor(totalMinutes / 60);
+          const minutes = totalMinutes % 60;
+          return `${hours}:${String(minutes).padStart(2, "0")}`;
+        }
+
+        function get_costs_aggregated({
+          costs,
+          groupBy,
+        }: {
+          costs: unknown[];
+          groupBy: "user" | "task" | "project";
+        }) {
+          if (!Array.isArray(costs)) {
+            throw new Error("costs must be an array");
+          }
+
+          if (!["users", "tasks", "projects"].includes(groupBy)) {
+            throw new Error(`Unsupported groupBy: ${groupBy}`);
+          }
+
+          const totalsMap = new Map();
+
+          for (const cost of costs) {
+            if (!cost || typeof cost !== "object" || !("time" in cost))
+              continue;
+
+            const minutes = timeToMinutes(cost.time as string);
+
+            let key;
+            let meta;
+
+            switch (groupBy) {
+              case "user":
+                key = (cost as Record<string, any>).user_from?.id;
+                meta = {
+                  userId: (cost as Record<string, any>).user_from?.id,
+                  email: (cost as Record<string, any>).user_from?.email,
+                  name: (cost as Record<string, any>).user_from?.name,
+                };
+                break;
+
+              case "task":
+                key = (cost as Record<string, any>).task?.id;
+                meta = {
+                  taskId: (cost as Record<string, any>).task?.id,
+                  taskName: (cost as Record<string, any>).task?.name,
+                };
+                break;
+
+              case "project":
+                key = (cost as Record<string, any>).task?.project?.id;
+                meta = {
+                  projectId: (cost as Record<string, any>).task?.project?.id,
+                  projectName: (cost as Record<string, any>).task?.project
+                    ?.name,
+                };
+                break;
+            }
+
+            if (!key) continue;
+
+            if (!totalsMap.has(key)) {
+              totalsMap.set(key, {
+                ...meta,
+                totalMinutes: 0,
+              });
+            }
+
+            totalsMap.get(key).totalMinutes += minutes;
+          }
+
+          return {
+            groupBy,
+            unit: "minutes",
+            totals: Array.from(totalsMap.values()).map((item) => ({
+              ...item,
+              totalTime: minutesToTime(item.totalMinutes), // UI-friendly
+            })),
+          };
+        }
+
+        const totals = get_costs_aggregated({
+          costs,
+          groupBy: args.groupBy as "user" | "task" | "project",
+        });
+
+        return respond({ count: totals.totals.length, totals });
+      } catch (error) {
+        console.error(`[get_costs_aggregated] Error:`, error);
+        // If the error mentions filter format, provide additional guidance
+        if (error instanceof Error && error.message.includes("groupBy")) {
+          const enhancedError = new Error(
+            `${error.message}\n\n` +
+              `Note: The filter parameter may not support all field types. ` +
+              `Try using projectId, taskId, userId, groupBy, or date ranges (startDate/endDate) instead of filter for user-based filtering.`
+          );
+          return respondError(enhancedError, "get_costs_aggregated");
+        }
+        return respondError(error, "get_costs_aggregated");
       }
     }) as any
   );
