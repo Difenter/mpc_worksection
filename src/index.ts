@@ -38,8 +38,8 @@ const pkgVersion = typeof pkg.version === "string" ? pkg.version : "0.0.0";
 const respond = (data: unknown) => ({
   content: [
     {
-      type: "json" as const,
-      json: data,
+      type: "text" as const,
+      text: JSON.stringify(data),
     },
   ],
   structuredContent: data,
@@ -1029,7 +1029,14 @@ function registerTools(server: McpServer, client: WorksectionClient) {
         console.error(
           `[get_costs] Successfully retrieved ${costs.length} cost entries`
         );
-        return respond({ count: costs.length, costs });
+
+        const test = costs.map((cost) => {
+          return {
+            ...(cost as Record<string, any>),
+            timeMinutes: parseInt((cost as Record<string, any>).time.split(':')[0]) * 60 + parseInt((cost as Record<string, any>).time.split(':')[1]),
+          };
+        });
+        return respond({ data: test });
       } catch (error) {
         console.error(`[get_costs] Error:`, error);
         // If the error mentions filter format, provide additional guidance
