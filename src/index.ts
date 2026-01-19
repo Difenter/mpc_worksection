@@ -410,7 +410,6 @@ const getCostsAggregatedOutputSchema = z.object({
   count: z.number(),
   costs: z.array(recordAny),
   groupBy: z.string().optional(),
-  unit: z.string().optional(),
 });
 
 const getCostsTotalArgsSchemaBase = z.object({
@@ -1232,7 +1231,6 @@ function registerTools(server: McpServer, client: WorksectionClient) {
 
           return {
             groupBy,
-            unit: "minutes",
             totals: Array.from(totalsMap.values()).map((item) => ({
               ...item,
               totalTime: minutesToWsTime(item.totalMinutes), // UI-friendly
@@ -1256,7 +1254,6 @@ function registerTools(server: McpServer, client: WorksectionClient) {
           count: aggregated.totals.length,
           costs: aggregated.totals,
           groupBy: aggregated.groupBy,
-          unit: aggregated.unit,
         });
       } catch (error) {
         console.error(`[get_costs_aggregated] Error:`, error);
