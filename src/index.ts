@@ -409,6 +409,8 @@ type GetCostsAggregatedArgs = z.infer<typeof getCostsAggregatedArgsSchema>;
 const getCostsAggregatedOutputSchema = z.object({
   count: z.number(),
   costs: z.array(recordAny),
+  groupBy: z.string().optional(),
+  unit: z.string().optional(),
 });
 
 const getCostsTotalArgsSchemaBase = z.object({
@@ -1162,30 +1164,6 @@ function registerTools(server: McpServer, client: WorksectionClient) {
 
         // return respond({ count: costs.length, costs });
 
-        function timeToMinutes(timeStr: string) {
-          if (typeof timeStr !== "string" || !timeStr.includes(":")) {
-            throw new Error(`Invalid time format: ${timeStr}`);
-          }
-
-          const [h, m] = timeStr.split(":").map(Number);
-
-          if (!h || !m) {
-            throw new Error(`Invalid time values: ${timeStr}`);
-          }
-
-          if (!Number.isInteger(h) || !Number.isInteger(m)) {
-            throw new Error(`Invalid time values: ${timeStr}`);
-          }
-
-          return h * 60 + m;
-        }
-
-        function minutesToTime(totalMinutes: number) {
-          const hours = Math.floor(totalMinutes / 60);
-          const minutes = totalMinutes % 60;
-          return `${hours}:${String(minutes).padStart(2, "0")}`;
-        }
-
         function get_costs_aggregated({
           costs,
           groupBy,
@@ -1197,7 +1175,7 @@ function registerTools(server: McpServer, client: WorksectionClient) {
             throw new Error("costs must be an array");
           }
 
-          if (!["users", "tasks", "projects"].includes(groupBy)) {
+          if (!["user", "task", "project"].includes(groupBy)) {
             throw new Error(`Unsupported groupBy: ${groupBy}`);
           }
 
@@ -1207,7 +1185,7 @@ function registerTools(server: McpServer, client: WorksectionClient) {
             if (!cost || typeof cost !== "object" || !("time" in cost))
               continue;
 
-            const minutes = timeToMinutes(cost.time as string);
+            const minutes = parseWsTimeToMinutes(cost.time);
 
             let key;
             let meta;
@@ -1257,25 +1235,37 @@ function registerTools(server: McpServer, client: WorksectionClient) {
             unit: "minutes",
             totals: Array.from(totalsMap.values()).map((item) => ({
               ...item,
-              totalTime: minutesToTime(item.totalMinutes), // UI-friendly
+              totalTime: minutesToWsTime(item.totalMinutes), // UI-friendly
             })),
           };
         }
 
-        const totals = get_costs_aggregated({
+        if (!args.groupBy) {
+          return respondError(
+            new Error("groupBy parameter is required for aggregation"),
+            "get_costs_aggregated"
+          );
+        }
+
+        const aggregated = get_costs_aggregated({
           costs,
           groupBy: args.groupBy as "user" | "task" | "project",
         });
 
-        return respond({ count: totals.totals.length, totals });
+        return respond({
+          count: aggregated.totals.length,
+          costs: aggregated.totals,
+          groupBy: aggregated.groupBy,
+          unit: aggregated.unit,
+        });
       } catch (error) {
         console.error(`[get_costs_aggregated] Error:`, error);
-        // If the error mentions filter format, provide additional guidance
+        // If the error mentions groupBy, provide additional guidance
         if (error instanceof Error && error.message.includes("groupBy")) {
           const enhancedError = new Error(
             `${error.message}\n\n` +
-              `Note: The filter parameter may not support all field types. ` +
-              `Try using projectId, taskId, userId, groupBy, or date ranges (startDate/endDate) instead of filter for user-based filtering.`
+              `Supported groupBy values are: "user", "task", "project". ` +
+              `Make sure to use the singular form (not "users", "tasks", or "projects").`
           );
           return respondError(enhancedError, "get_costs_aggregated");
         }
