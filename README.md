@@ -65,6 +65,7 @@ To run in stdio mode (for tools like the MCP Inspector or Claude’s CLI), start
 - `delete_project_members` - removes users from a project; requires `projectId` and `emails` (list of user emails).
 - `get_costs` – returns cost rows; optional `projectId`, `taskId`, `startDate`, `endDate`, `isTimer`, `filter`.
 - `get_costs_total` – aggregates totals; optional `projectId`, `taskId`, `startDate`, `endDate`, `isTimer`, `filter`, `include: ["projects"]`.
+- `get_costs_aggregated` – aggregates costs by user, task, or project with client-side grouping. Requires `groupBy` (`"user"`, `"task"`, or `"project"`). Optional filters: `projectId`, `taskId`, `userId`, `startDate`, `endDate`, `isTimer`. Returns aggregated totals with `totalTime` (formatted as `H:MM`) and `totalMinutes` for each group. When `userId` is provided, results are filtered to that user before aggregation.
 - `get_timers` – lists currently running timers. No inputs.
 - `post_task` – creates tasks/subtasks; optional fields include `description`, `parentTaskId`, `assigneeEmail`, `priority`, `startDate`, `dueDate`, `checklist`, `subscribeEmails`, `visibilityEmails`, `mentionEmails`, `estimateHours`, `budget`, `tags`, and `attachments` (either inlined base64 data or `sourceUrl` that the server downloads via Slack-authenticated HTTP).
 - `post_comment` – posts comments; optional `text`, `checklist`, `visibilityEmails`, `mentionEmails` (one of `text` or `checklist` required).
@@ -82,14 +83,35 @@ Supported extras:
 
 ### Cost filtering reference (`get_costs`, `get_costs_total`)
 
-Both cost tools accept Worksection’s filter syntax:
+Both cost tools accept Worksection's filter syntax:
 
 - Scope by ID: `project=2456`, `id in (123, 456)`
 - String filters: `comment = 'Monthly report'`, `comment has 'report'`
 - Date filters: `dateadd > '01.05.2024'`
 - Combine with parentheses and `and`/`or`: `(comment has 'report' or comment has 'review') and (dateadd<'25.05.2024' and dateadd>'31.05.2024')`
 
-Dates in `startDate`/`endDate` can be ISO (`YYYY-MM-DD`) or already formatted (`DD.MM.YYYY`); the server converts ISO to Worksection’s preferred format.
+Dates in `startDate`/`endDate` can be ISO (`YYYY-MM-DD`) or already formatted (`DD.MM.YYYY`); the server converts ISO to Worksection's preferred format.
+
+### Cost aggregation (`get_costs_aggregated`)
+
+The `get_costs_aggregated` tool fetches cost entries via `get_costs` and performs client-side aggregation. It groups costs by:
+
+- `groupBy: "user"` – aggregates by user (includes `userId`, `email`, `name`, `totalTime`, `totalMinutes`)
+- `groupBy: "task"` – aggregates by task (includes `taskId`, `taskName`, `totalTime`, `totalMinutes`)
+- `groupBy: "project"` – aggregates by project (includes `projectId`, `projectName`, `totalTime`, `totalMinutes`)
+
+**Example usage:**
+
+```json
+{
+  "groupBy": "user",
+  "projectId": "408812",
+  "startDate": "2026-01-01",
+  "endDate": "2026-01-31"
+}
+```
+
+This returns aggregated time totals per user for the specified project and date range. The `userId` filter can be used to restrict results to a specific user before aggregation.
 
 ## Exposed resources
 

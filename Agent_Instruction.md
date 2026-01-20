@@ -47,6 +47,53 @@ User: "Show me tasks in the Marketing project"
 
 ---
 
+## Calculator
+
+Tool: `Calculator`
+
+### Purpose
+The Calculator is used ONLY for numeric math evaluation.
+It MUST receive a SINGLE valid mathematical expression.
+
+### Input Rules (HARD CONSTRAINTS)
+
+The `input` field sent to Calculator MUST:
+
+- Contain ONLY numbers, parentheses, and math operators: `+ - * /`
+- Be a VALID arithmetic expression
+- Contain NO text
+- Contain NO IDs
+- Contain NO JSON
+- Contain NO time in `H:MM` format
+- Contain NO commas, labels, or words
+
+INVALID INPUT EXAMPLES:
+- `"16323108,16323111,16322808"`
+- `"0:35 + 1:10"`
+- `"sum of times"`
+- `"hours worked by Denis"`
+
+VALID INPUT EXAMPLES:
+- `"3.5 + 70 + 1.55"`
+- `"210 + 45 + 30"`
+
+### Execution Rules
+
+- Calculator performs math ONLY
+- Calculator does NOT parse time
+- Calculator does NOT infer meaning
+- Calculator does NOT clean inputs
+- If input is invalid → calculation MUST NOT run
+
+---
+
+## Time Calculator
+Tool: `Calculator_Time`
+
+
+
+---
+
 ## Available Tools and Operations
 
 ### READ Operations
@@ -343,7 +390,68 @@ User: "Show me tasks in the Marketing project"
 
 ---
 
-#### 8. `get_costs_total`
+
+#### 8. `get_costs_aggregated`
+
+**Purpose**: Retrieve logged time and money entries (costs) with filtering.
+
+**Parameters** (at least ONE filter is REQUIRED):
+- `groupBy` (required): Filter costs by specific group one of this: "user" | "project" | "task" (string)
+  - **RECOMMENDED: Use this instead of filter for task-based queries**
+- `projectId` (optional): Filter costs by project ID (string)
+  - **Prefer using project ID from project-first step**
+  - **RECOMMENDED: Use this instead of filter for project-based queries**
+- `taskId` (optional): Filter costs by specific task ID (string)
+  - **RECOMMENDED: Use this instead of filter for task-based queries**
+- `userId` (optional): Filter costs by specific user ID (string)
+  - **RECOMMENDED: Use this instead of filter for user-based queries**
+- `startDate` (optional): Start date for date range filter (string)
+  - Format: `"YYYY-MM-DD"` (ISO) or `"DD.MM.YYYY"` (Worksection format)
+  - Server automatically converts ISO to Worksection format
+  - **RECOMMENDED: Use this for date filtering instead of filter parameter**
+- `endDate` (optional): End date for date range filter (string)
+  - Same format as `startDate`
+  - **RECOMMENDED: Use this for date filtering instead of filter parameter**
+- `isTimer` (optional): Filter by timer status (boolean)
+  - `true`: Only running/active timers
+  - `false`: Only completed time entries
+
+**IMPORTANT - Filter Limitations**:
+
+- **User filtering does NOT work**: The Worksection API does not support filtering by user-related fields (`user`, `user_id`, `user.email`, `uid`) in the `filter` parameter for `get_costs`
+- **Workaround for user filtering**:
+  1. Use `projectId` + `startDate`/`endDate` to get costs for a specific project/date range
+  2. Filter the results client-side by user information from the returned cost objects
+  3. Or use `taskId` if you know which tasks the user worked on
+
+**Returns**:
+
+- `groupBy`: Name of the group
+- `count`: Number of cost entries returned
+- `costs`: Array of cost/time entry objects (each object contains information by selected group that can be filtered client-side)
+
+**When to use**:
+
+- To view time tracking entries
+- To analyze project costs
+- To get billing information
+- **Always include projectId when filtering by project**
+- **For user-specific queries**: Get costs by project/date range, then filter results by user
+
+**Example - Recommended (using projectId and dates)**:
+
+```json
+{
+  "groupBy": "user",
+  "projectId": "12345",
+  "startDate": "2024-01-01",
+  "endDate": "2024-12-31"
+}
+```
+
+---
+
+#### 9. `get_costs_total`
 
 **Purpose**: Get aggregated cost totals (summaries) with optional per-project breakdowns.
 
@@ -388,7 +496,7 @@ User: "Show me tasks in the Marketing project"
 
 ---
 
-#### 9. `get_timers`
+#### 10. `get_timers`
 
 **Purpose**: List all currently running/active timers.
 
@@ -409,7 +517,7 @@ User: "Show me tasks in the Marketing project"
 
 ---
 
-#### 10. `get_task_tags`
+#### 11. `get_task_tags`
 
 **Purpose**: Retrieve a list of task tags from Worksection, optionally filtered by group, type, or access.
 
@@ -446,7 +554,7 @@ User: "Show me tasks in the Marketing project"
 
 ---
 
-#### 11. `get_task_tag_groups`
+#### 12. `get_task_tag_groups`
 
 **Purpose**: Retrieve all task tag groups (categories of tags).
 
@@ -482,7 +590,7 @@ User: "Show me tasks in the Marketing project"
 
 ### WRITE Operations
 
-#### 12. `post_task`
+#### 13. `post_task`
 
 **Purpose**: Create a new task or subtask in a project.
 
@@ -546,7 +654,7 @@ User: "Show me tasks in the Marketing project"
 
 ---
 
-#### 13. `post_comment`
+#### 14. `post_comment`
 
 **Purpose**: Add a comment or checklist to an existing task.
 
@@ -584,7 +692,7 @@ User: "Show me tasks in the Marketing project"
 
 ---
 
-#### 14. `update_task_tags`
+#### 15. `update_task_tags`
 
 **Purpose**: Update task tags by adding new tags and/or removing existing ones. This is the primary method for changing task status.
 
@@ -627,7 +735,7 @@ User: "Show me tasks in the Marketing project"
 
 ---
 
-#### 15. `update_task`
+#### 16. `update_task`
 
 **Purpose**: Modify an existing task's properties.
 
@@ -668,7 +776,7 @@ User: "Show me tasks in the Marketing project"
 
 ---
 
-#### 16. `complete_task`
+#### 17. `complete_task`
 
 **Purpose**: Mark a task as completed.
 
@@ -695,7 +803,7 @@ User: "Show me tasks in the Marketing project"
 
 ---
 
-#### 17. `add_project_members`
+#### 18. `add_project_members`
 
 **Purpose**: Add users to a project team.
 
@@ -724,7 +832,7 @@ User: "Show me tasks in the Marketing project"
 
 ---
 
-#### 18. `delete_project_members`
+#### 19. `delete_project_members`
 
 **Purpose**: Remove users from a project team.
 
@@ -861,10 +969,10 @@ Step 2: Execute Operation
 
 ### 8. Filter Requirements
 
-**For cost operations (`get_costs`, `get_costs_total`):**
+**For cost operations (`get_costs`, `get_costs_total`, `get_costs_aggregated`):**
 
 - **At least ONE filter parameter is REQUIRED**
-- Valid filters: `projectId`, `taskId`, `startDate`, `endDate`, or `filter`
+- Valid filters: `projectId`, `userId`, `taskId`, `startDate`, `endDate`, or `filter`
 - **Always prefer using projectId from project-first step**
 - This prevents unbounded queries that may exceed memory limits
 
@@ -875,7 +983,7 @@ Step 2: Execute Operation
   1. Use `projectId` + `startDate`/`endDate` to get all costs for the project/period
   2. The returned cost objects will include user information
   3. Filter the results programmatically by checking the user fields in each cost object
-- **Preferred approach**: Always use `projectId`, `taskId`, or `startDate`/`endDate` instead of `filter` when possible
+- **Preferred approach**: Always use `projectId`, `userId`, `taskId`, or `startDate`/`endDate` instead of `filter` when possible
 - **Only use `filter` for**: `id`, `project`, `task`, `comment`, or `dateadd` fields
 
 ---
@@ -962,6 +1070,7 @@ Step 2: Execute Operation
 
 1. Get costs: `get_costs(projectId, taskId, startDate, endDate, ...)`
 2. Get totals: `get_costs_total(projectId, taskId, startDate, endDate, include, ...)`
+3. Get costs aggregated: `get_costs_aggregated(projectId, taskId, userId, groupBy, startDate, endDate, isTimer)`
 
 **User Operations:**
 
@@ -1071,23 +1180,6 @@ Step 2: Execute Operation
 | **Change request** | `2598215` | Request for change |
 | **Infrastructure** | `2803058` | DevOps/Infra task |
 | **Documentation** | `2808134` | Docs related |
-
----
-
-## Summary Checklist
-
-Before executing any operation, verify:
-
-- [ ] **Project identified and verified** (if operation requires project)
-- [ ] **Project ID obtained and stored** (from `get_projects` or `get_project`)
-- [ ] **Write intent is explicit** (for write operations)
-- [ ] **User emails verified** (if assigning or mentioning users)
-- [ ] **Task IDs verified** (if referencing specific tasks)
-- [ ] **Required parameters provided** (check all required fields)
-- [ ] **Date formats correct** (ISO format preferred)
-- [ ] **Filter parameters included** (for cost operations - at least one required)
-- [ ] **Filter limitations understood** (for `get_costs`: NO user filtering in `filter` parameter)
-- [ ] **No guessing or fabrication** (all IDs verified)
 
 ---
 

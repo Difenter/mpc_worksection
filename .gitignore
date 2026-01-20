@@ -18,3 +18,4 @@ coverage
 out
 build
 .env.local
+/manual-tests
